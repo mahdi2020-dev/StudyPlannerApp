@@ -74,13 +74,15 @@ class MainWindow(QMainWindow):
         self.finance_btn.clicked.connect(lambda: self.change_page(1))
         self.health_btn.clicked.connect(lambda: self.change_page(2))
         self.calendar_btn.clicked.connect(lambda: self.change_page(3))
-        self.settings_btn.clicked.connect(lambda: self.change_page(4))
+        self.ai_advisor_btn.clicked.connect(lambda: self.change_page(4))
+        self.settings_btn.clicked.connect(lambda: self.change_page(5))
         
         # Add buttons to layout
         nav_buttons_layout.addWidget(self.dashboard_btn)
         nav_buttons_layout.addWidget(self.finance_btn)
         nav_buttons_layout.addWidget(self.health_btn)
         nav_buttons_layout.addWidget(self.calendar_btn)
+        nav_buttons_layout.addWidget(self.ai_advisor_btn)
         nav_buttons_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
         nav_buttons_layout.addWidget(self.settings_btn)
         
@@ -96,6 +98,7 @@ class MainWindow(QMainWindow):
         self.finance_module = FinanceModule(self.user)
         self.health_module = HealthModule(self.user)
         self.calendar_module = CalendarModule(self.user)
+        self.ai_advisor_module = AIAdvisorModule(self.user)
         self.settings_widget = SettingsWidget(self.user)
         
         # Add modules to stacked widget
@@ -103,6 +106,7 @@ class MainWindow(QMainWindow):
         self.content_area.addWidget(self.finance_module)
         self.content_area.addWidget(self.health_module)
         self.content_area.addWidget(self.calendar_module)
+        self.content_area.addWidget(self.ai_advisor_module)
         self.content_area.addWidget(self.settings_widget)
         
         main_layout.addWidget(self.content_area)
@@ -116,7 +120,7 @@ class MainWindow(QMainWindow):
         """Change the current page in the stacked widget"""
         # Reset all button states
         for btn in [self.dashboard_btn, self.finance_btn, self.health_btn, 
-                    self.calendar_btn, self.settings_btn]:
+                    self.calendar_btn, self.ai_advisor_btn, self.settings_btn]:
             btn.setActive(False)
             
         # Set the active button
@@ -129,6 +133,8 @@ class MainWindow(QMainWindow):
         elif index == 3:
             self.calendar_btn.setActive(True)
         elif index == 4:
+            self.ai_advisor_btn.setActive(True)
+        elif index == 5:
             self.settings_btn.setActive(True)
             
         # Change the page
