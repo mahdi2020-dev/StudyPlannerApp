@@ -18,6 +18,7 @@ from app.ui.finance_module import FinanceModule
 from app.ui.health_module import HealthModule
 from app.ui.calendar_module import CalendarModule
 from app.ui.settings import SettingsWidget
+from app.ui.ai_advisor_module import AIAdvisorModule
 from app.ui.widgets import NeonIconButton, UserProfileWidget
 from app.models.user import User
 
@@ -65,6 +66,7 @@ class MainWindow(QMainWindow):
         self.finance_btn = NeonIconButton("مدیریت مالی", "💰")
         self.health_btn = NeonIconButton("سلامتی", "❤️")
         self.calendar_btn = NeonIconButton("زمان‌بندی", "📅")
+        self.ai_advisor_btn = NeonIconButton("مشاور هوشمند", "🤖")
         self.settings_btn = NeonIconButton("تنظیمات", "⚙️")
         
         # Connect button signals
