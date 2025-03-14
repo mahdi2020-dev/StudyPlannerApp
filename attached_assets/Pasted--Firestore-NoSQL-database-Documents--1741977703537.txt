@@ -1,0 +1,84 @@
+. تعریف ساختار دیتابیس
+Firestore یک NoSQL database است و داده‌ها را به‌صورت مستندات (Documents) در کالکشن‌ها (Collections) ذخیره می‌کند. ساختار پیشنهادی برای پروژه:
+
+yaml
+Copy
+Edit
+Firestore Database
+│── users (Collection)
+│   ├── user_123 (Document)
+│       ├── name: "Ali"
+│       ├── email: "ali@email.com"
+│       ├── finances: {income: 5000000, expenses: 2000000}
+│       ├── health: {weight: 70, steps: 8000}
+│       ├── schedule: {task1: "ورزش", task2: "خرید"}
+│
+│── finances (Collection)
+│   ├── user_123 (Document)
+│       ├── transactions: [{amount: 500000, category: "خوراک", date: "2024-03-14"}]
+│
+│── health (Collection)
+│   ├── user_123 (Document)
+│       ├── exercise: [{date: "2024-03-14", type: "دویدن", duration: 30}]
+│
+│── schedules (Collection)
+│   ├── user_123 (Document)
+│       ├── events: [{date: "2024-03-14", task: "جلسه کاری"}]
+🔹 ۴. خواندن و نوشتن اطلاعات در Firestore
+➤ اضافه کردن اطلاعات
+python
+Copy
+Edit
+def add_user(user_id, name, email):
+    user_ref = db.collection("users").document(user_id)
+    user_ref.set({
+        "name": name,
+        "email": email,
+        "finances": {},
+        "health": {},
+        "schedule": {}
+    })
+    print(f"User {name} added successfully!")
+
+add_user("user_123", "علی", "ali@email.com")
+➤ خواندن اطلاعات کاربر
+python
+Copy
+Edit
+def get_user(user_id):
+    user_ref = db.collection("users").document(user_id)
+    user = user_ref.get()
+    if user.exists:
+        print(user.to_dict())
+    else:
+        print("کاربر یافت نشد.")
+
+get_user("user_123")
+➤ ثبت تراکنش مالی
+python
+Copy
+Edit
+def add_transaction(user_id, amount, category):
+    transactions_ref = db.collection("finances").document(user_id)
+    transactions_ref.set({
+        "transactions": firestore.ArrayUnion([{
+            "amount": amount,
+            "category": category,
+            "date": "2024-03-14"
+        }])
+    }, merge=True)
+
+add_transaction("user_123", 500000, "خوراک")
+➤ دریافت لیست تراکنش‌ها
+python
+Copy
+Edit
+def get_transactions(user_id):
+    transactions_ref = db.collection("finances").document(user_id)
+    transactions = transactions_ref.get()
+    if transactions.exists:
+        print(transactions.to_dict())
+    else:
+        print("تراکنش مالی یافت نشد.")
+
+get_transactions("user_123")
