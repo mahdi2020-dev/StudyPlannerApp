@@ -2946,11 +2946,34 @@ def run_replit_web_preview():
             if not username or not password:
                 self.send_redirect('/login')
                 return
+            
+            # First try Firebase login
+            try:
+                from app.core.firebase_adapter import FirebaseAdapter
+                firebase_adapter = FirebaseAdapter()
                 
+                if firebase_adapter.enabled:
+                    logger.info(f"Attempting Firebase login for user {username}")
+                    user = firebase_adapter.firebase_login(username, password)
+                    if user:
+                        current_user["user_id"] = user.id
+                        current_user["username"] = user.username
+                        current_user["firebase_uid"] = getattr(user, "firebase_uid", None)
+                        logger.info(f"User {username} logged in via Firebase")
+                        self.send_redirect('/dashboard')
+                        return
+            except ImportError:
+                logger.warning("Firebase adapter not available")
+            except Exception as e:
+                logger.error(f"Error during Firebase login: {str(e)}")
+            
+            # Fallback to SQLite login
+            logger.info(f"Attempting SQLite login for user {username}")
             user = auth_service.login(username, password)
             if user:
                 current_user["user_id"] = user.id
                 current_user["username"] = user.username
+                current_user["firebase_uid"] = None
                 self.send_redirect('/dashboard')
             else:
                 self.send_redirect('/login')
@@ -2966,15 +2989,39 @@ def run_replit_web_preview():
             if len(password) < 6:
                 self.send_redirect('/login')
                 return
-                
+            
+            # Check if user exists first
             if auth_service.user_exists(username):
                 self.send_redirect('/login')
                 return
+            
+            # Try Firebase registration
+            try:
+                from app.core.firebase_adapter import FirebaseAdapter
+                firebase_adapter = FirebaseAdapter()
                 
+                if firebase_adapter.enabled:
+                    logger.info(f"Attempting Firebase registration for user {username}")
+                    user = firebase_adapter.firebase_register(username, password)
+                    if user:
+                        current_user["user_id"] = user.id
+                        current_user["username"] = user.username
+                        current_user["firebase_uid"] = getattr(user, "firebase_uid", None)
+                        logger.info(f"User {username} registered via Firebase")
+                        self.send_redirect('/dashboard')
+                        return
+            except ImportError:
+                logger.warning("Firebase adapter not available")
+            except Exception as e:
+                logger.error(f"Error during Firebase registration: {str(e)}")
+            
+            # Fallback to SQLite registration
+            logger.info(f"Attempting SQLite registration for user {username}")
             user = auth_service.register(username, password)
             if user:
                 current_user["user_id"] = user.id
                 current_user["username"] = user.username
+                current_user["firebase_uid"] = None
                 self.send_redirect('/dashboard')
             else:
                 self.send_redirect('/login')
@@ -3008,7 +3055,25 @@ def run_replit_web_preview():
                     description=description
                 )
                 
-                finance_service.add_transaction(transaction)
+                # Save to SQLite
+                transaction_id = finance_service.add_transaction(transaction)
+                transaction.id = transaction_id
+                
+                # Also save to Firebase if available
+                firebase_uid = current_user.get("firebase_uid")
+                if firebase_uid:
+                    try:
+                        from app.core.firebase_adapter import FirebaseAdapter
+                        firebase_adapter = FirebaseAdapter()
+                        
+                        if firebase_adapter.enabled:
+                            logger.info(f"Adding transaction to Firebase for user {firebase_uid}")
+                            firebase_adapter.add_transaction_to_firebase(transaction, firebase_uid)
+                    except ImportError:
+                        logger.warning("Firebase adapter not available")
+                    except Exception as e:
+                        logger.error(f"Error adding transaction to Firebase: {str(e)}")
+                
                 self.send_redirect('/finance')
             except Exception as e:
                 logger.error(f"Error adding transaction: {str(e)}")
