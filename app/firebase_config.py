@@ -2,12 +2,16 @@
 Firebase Configuration for Persian Life Manager Application
 """
 
+import os
+import json
+import logging
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
-import os
-import logging
 
 logger = logging.getLogger(__name__)
+
+# Firebase Web API Key for client-side authentication
+FIREBASE_WEB_API_KEY = "AIzaSyDNJlCgkKyEg_9ndH4H27PSv9DAWpEswNA"
 
 class FirebaseManager:
     """Firebase database and authentication manager"""
@@ -23,25 +27,39 @@ class FirebaseManager:
     
     def initialize(self):
         """Initialize Firebase connection"""
+        self.app = None
+        self.db = None
+        self.initialized = False
+        
         try:
-            # بارگذاری کلید خصوصی
-            cred_path = os.path.join(os.getcwd(), "serviceAccountKey.json")
-            cred = credentials.Certificate(cred_path)
-            firebase_admin.initialize_app(cred)
+            # Look for service account file in different locations
+            service_account_locations = [
+                'serviceAccountKey.json',
+                'attached_assets/persian-life-manager-firebase-adminsdk-fbsvc-df2a5fea2d.json',
+                os.path.join(os.path.expanduser('~'), '.persian_life_manager', 'serviceAccountKey.json')
+            ]
             
-            # اتصال به Firestore
-            self.db = firestore.client()
-            logger.info("🔥 Firebase connected successfully!")
-            self.initialized = True
+            cred_path = None
+            for location in service_account_locations:
+                if os.path.exists(location):
+                    cred_path = location
+                    break
+            
+            if cred_path:
+                logger.info(f"Using Firebase service account from: {cred_path}")
+                cred = credentials.Certificate(cred_path)
+                self.app = firebase_admin.initialize_app(cred)
+                self.db = firestore.client()
+                self.initialized = True
+                logger.info("Firebase initialized successfully")
+            else:
+                logger.error("Firebase service account file not found in any location")
         except Exception as e:
-            logger.error(f"Firebase initialization error: {str(e)}")
-            self.initialized = False
+            logger.error(f"Error initializing Firebase: {str(e)}")
     
     def is_initialized(self):
         """Check if Firebase is initialized"""
-        return getattr(self, 'initialized', False)
-    
-    # ================ User Authentication Methods ================
+        return self.initialized
     
     def register_user(self, email, password, name):
         """Register a new user
@@ -54,18 +72,15 @@ class FirebaseManager:
         Returns:
             tuple: (success, user_id or error_message)
         """
+        if not self.initialized:
+            return False, "Firebase not initialized"
+        
         try:
-            user = auth.create_user(email=email, password=password)
-            
-            # Create user document in Firestore
-            user_ref = self.db.collection("users").document(user.uid)
-            user_ref.set({
-                "name": name,
-                "email": email,
-                "created_at": firestore.SERVER_TIMESTAMP
-            })
-            
-            logger.info(f"User {email} created successfully!")
+            user = auth.create_user(
+                email=email,
+                password=password,
+                display_name=name
+            )
             return True, user.uid
         except Exception as e:
             logger.error(f"Error registering user: {str(e)}")
@@ -80,20 +95,22 @@ class FirebaseManager:
         Returns:
             dict: User data or None
         """
+        if not self.initialized:
+            return None
+        
         try:
-            users = auth.get_users_by_email(email)
-            if users and len(users) > 0:
-                user = users[0]
-                return {
-                    "uid": user.uid,
-                    "email": user.email
-                }
+            user = auth.get_user_by_email(email)
+            return {
+                "uid": user.uid,
+                "email": user.email,
+                "display_name": user.display_name
+            }
+        except auth.UserNotFoundError:
+            logger.warning(f"User with email {email} not found")
             return None
         except Exception as e:
             logger.error(f"Error getting user by email: {str(e)}")
             return None
-    
-    # ================ Data Management Methods ================
     
     def add_user_data(self, user_id, collection, data):
         """Add user data to a collection
@@ -106,13 +123,11 @@ class FirebaseManager:
         Returns:
             bool: Success status
         """
+        if not self.initialized:
+            return False
+        
         try:
-            # Add timestamp
-            data["created_at"] = firestore.SERVER_TIMESTAMP
-            
-            # Add data to collection
-            doc_ref = self.db.collection(collection).document(user_id)
-            doc_ref.set(data, merge=True)
+            self.db.collection('users').document(user_id).collection(collection).add(data)
             return True
         except Exception as e:
             logger.error(f"Error adding user data: {str(e)}")
@@ -128,17 +143,18 @@ class FirebaseManager:
         Returns:
             dict: User data or None
         """
-        try:
-            doc_ref = self.db.collection(collection).document(user_id)
-            doc = doc_ref.get()
-            if doc.exists:
-                return doc.to_dict()
+        if not self.initialized:
             return None
+        
+        try:
+            data = {}
+            docs = self.db.collection('users').document(user_id).collection(collection).get()
+            for doc in docs:
+                data[doc.id] = doc.to_dict()
+            return data
         except Exception as e:
             logger.error(f"Error getting user data: {str(e)}")
             return None
-    
-    # ================ Specific Collection Methods ================
     
     def add_transaction(self, user_id, transaction_data):
         """Add a financial transaction
@@ -150,13 +166,11 @@ class FirebaseManager:
         Returns:
             bool: Success status
         """
+        if not self.initialized:
+            return False
+        
         try:
-            # Add timestamp
-            transaction_data["created_at"] = firestore.SERVER_TIMESTAMP
-            
-            # Add transaction to transactions subcollection
-            doc_ref = self.db.collection("finances").document(user_id)
-            doc_ref.collection("transactions").add(transaction_data)
+            self.db.collection('users').document(user_id).collection('transactions').add(transaction_data)
             return True
         except Exception as e:
             logger.error(f"Error adding transaction: {str(e)}")
@@ -172,19 +186,16 @@ class FirebaseManager:
         Returns:
             list: List of transactions
         """
+        if not self.initialized:
+            return []
+        
         try:
             transactions = []
-            docs = self.db.collection("finances").document(user_id) \
-                .collection("transactions") \
-                .order_by("created_at", direction=firestore.Query.DESCENDING) \
-                .limit(limit) \
-                .stream()
-            
+            docs = self.db.collection('users').document(user_id).collection('transactions').limit(limit).get()
             for doc in docs:
                 transaction = doc.to_dict()
-                transaction["id"] = doc.id
+                transaction['id'] = doc.id
                 transactions.append(transaction)
-            
             return transactions
         except Exception as e:
             logger.error(f"Error getting transactions: {str(e)}")
@@ -200,13 +211,11 @@ class FirebaseManager:
         Returns:
             bool: Success status
         """
+        if not self.initialized:
+            return False
+        
         try:
-            # Add timestamp
-            metric_data["created_at"] = firestore.SERVER_TIMESTAMP
-            
-            # Add metric to metrics subcollection
-            doc_ref = self.db.collection("health").document(user_id)
-            doc_ref.collection("metrics").add(metric_data)
+            self.db.collection('users').document(user_id).collection('health_metrics').add(metric_data)
             return True
         except Exception as e:
             logger.error(f"Error adding health metric: {str(e)}")
@@ -222,19 +231,16 @@ class FirebaseManager:
         Returns:
             list: List of health metrics
         """
+        if not self.initialized:
+            return []
+        
         try:
             metrics = []
-            docs = self.db.collection("health").document(user_id) \
-                .collection("metrics") \
-                .order_by("created_at", direction=firestore.Query.DESCENDING) \
-                .limit(limit) \
-                .stream()
-            
+            docs = self.db.collection('users').document(user_id).collection('health_metrics').limit(limit).get()
             for doc in docs:
                 metric = doc.to_dict()
-                metric["id"] = doc.id
+                metric['id'] = doc.id
                 metrics.append(metric)
-            
             return metrics
         except Exception as e:
             logger.error(f"Error getting health metrics: {str(e)}")
@@ -250,13 +256,11 @@ class FirebaseManager:
         Returns:
             bool: Success status
         """
+        if not self.initialized:
+            return False
+        
         try:
-            # Add timestamp
-            event_data["created_at"] = firestore.SERVER_TIMESTAMP
-            
-            # Add event to events subcollection
-            doc_ref = self.db.collection("schedules").document(user_id)
-            doc_ref.collection("events").add(event_data)
+            self.db.collection('users').document(user_id).collection('calendar_events').add(event_data)
             return True
         except Exception as e:
             logger.error(f"Error adding calendar event: {str(e)}")
@@ -272,19 +276,16 @@ class FirebaseManager:
         Returns:
             list: List of calendar events
         """
+        if not self.initialized:
+            return []
+        
         try:
             events = []
-            docs = self.db.collection("schedules").document(user_id) \
-                .collection("events") \
-                .order_by("created_at", direction=firestore.Query.DESCENDING) \
-                .limit(limit) \
-                .stream()
-            
+            docs = self.db.collection('users').document(user_id).collection('calendar_events').limit(limit).get()
             for doc in docs:
                 event = doc.to_dict()
-                event["id"] = doc.id
+                event['id'] = doc.id
                 events.append(event)
-            
             return events
         except Exception as e:
             logger.error(f"Error getting calendar events: {str(e)}")
