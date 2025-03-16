@@ -10,7 +10,9 @@ import hashlib
 import os
 import secrets
 import time
-from typing import Tuple, Optional
+import random
+import string
+from typing import Tuple, Optional, Dict
 
 from app.core.database import DatabaseManager
 
@@ -43,12 +45,37 @@ class AuthService:
                     name TEXT,
                     salt TEXT,
                     created_at TEXT,
-                    last_login TEXT
+                    last_login TEXT,
+                    is_active INTEGER DEFAULT 0,
+                    activation_code TEXT,
+                    activation_expiry TEXT
+                )
+            """)
+            
+            # Create a table for pending registrations
+            self.db_manager.execute_query("""
+                CREATE TABLE IF NOT EXISTS pending_registrations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT UNIQUE,
+                    password_hash TEXT,
+                    name TEXT,
+                    salt TEXT,
+                    created_at TEXT,
+                    activation_code TEXT,
+                    activation_expiry TEXT
                 )
             """)
         except Exception as e:
             logger.error(f"Error initializing authentication database: {str(e)}")
             raise
+            
+    def _generate_activation_code(self):
+        """Generate a random 6-digit activation code
+        
+        Returns:
+            str: 6-digit activation code
+        """
+        return ''.join(random.choices(string.digits, k=6))
     
     def _hash_password(self, password: str, salt: Optional[str] = None) -> Tuple[str, str]:
         """Hash a password with a salt
@@ -81,31 +108,172 @@ class AuthService:
             tuple: (success, user_id or error_message)
         """
         try:
-            # Check if email already exists
+            # Check if email already exists in users table
             query = "SELECT id FROM users WHERE email = ?"
             results = self.db_manager.execute_query(query, (email,))
             
             if results:
-                return False, "Email already exists"
+                return False, "email_exists"
+                
+            # Also check pending registrations
+            query = "SELECT id FROM pending_registrations WHERE email = ?"
+            results = self.db_manager.execute_query(query, (email,))
+            
+            # If already has a pending registration, we'll update it
+            if results:
+                # Delete the existing pending registration first
+                delete_query = "DELETE FROM pending_registrations WHERE email = ?"
+                self.db_manager.execute_update(delete_query, (email,))
             
             # Hash the password
             password_hash, salt = self._hash_password(password)
             
-            # Insert the new user
+            # Generate activation code
+            activation_code = self._generate_activation_code()
+            
+            # Set activation expiry (24 hours from now)
             now = time.strftime('%Y-%m-%d %H:%M:%S')
+            expiry = time.strftime(
+                '%Y-%m-%d %H:%M:%S', 
+                time.localtime(time.time() + 24 * 60 * 60)
+            )
+            
+            # Insert into pending registrations
             query = """
-                INSERT INTO users (email, password_hash, name, salt, created_at, last_login)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO pending_registrations (
+                    email, password_hash, name, salt, created_at, 
+                    activation_code, activation_expiry
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """
+            
+            registration_id = self.db_manager.execute_insert(
+                query, 
+                (email, password_hash, name, salt, now, activation_code, expiry)
+            )
+            
+            if not registration_id:
+                return False, "registration_failed"
+                
+            # In a real application, we would send the activation code via email
+            # For testing purposes, we'll return the activation code
+            return True, activation_code
+        except Exception as e:
+            logger.error(f"Error registering user: {str(e)}")
+            return False, "system_error"
+    
+    def verify_activation(self, email: str, activation_code: str) -> Tuple[bool, str]:
+        """Verify activation code and create the user account
+        
+        Args:
+            email (str): User email
+            activation_code (str): Activation code
+            
+        Returns:
+            tuple: (success, user_id or error_message)
+        """
+        try:
+            # Get the pending registration
+            query = """
+                SELECT * FROM pending_registrations 
+                WHERE email = ? AND activation_code = ?
+            """
+            results = self.db_manager.execute_query(query, (email, activation_code))
+            
+            if not results:
+                return False, "invalid_code"
+                
+            registration = results[0]
+            
+            # Check if code has expired
+            expiry = registration['activation_expiry']
+            now = time.strftime('%Y-%m-%d %H:%M:%S')
+            
+            if expiry < now:
+                return False, "code_expired"
+                
+            # Create the user account
+            insert_query = """
+                INSERT INTO users (
+                    email, password_hash, name, salt, created_at, last_login,
+                    is_active, activation_code, activation_expiry
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             
             user_id = self.db_manager.execute_insert(
-                query, (email, password_hash, name, salt, now, now)
+                insert_query, 
+                (
+                    registration['email'], 
+                    registration['password_hash'],
+                    registration['name'],
+                    registration['salt'],
+                    registration['created_at'],
+                    now,  # last_login
+                    1,    # is_active
+                    None, # activation_code (set to None once verified)
+                    None  # activation_expiry (set to None once verified)
+                )
             )
+            
+            if not user_id:
+                return False, "activation_failed"
+                
+            # Delete the pending registration
+            delete_query = "DELETE FROM pending_registrations WHERE id = ?"
+            self.db_manager.execute_update(delete_query, (registration['id'],))
             
             return True, str(user_id)
         except Exception as e:
-            logger.error(f"Error registering user: {str(e)}")
-            return False, str(e)
+            logger.error(f"Error verifying activation: {str(e)}")
+            return False, "system_error"
+            
+    def resend_activation_code(self, email: str) -> Tuple[bool, str]:
+        """Resend activation code for a pending registration
+        
+        Args:
+            email (str): User email
+            
+        Returns:
+            tuple: (success, activation_code or error_message)
+        """
+        try:
+            # Check if email exists in pending registrations
+            query = "SELECT id FROM pending_registrations WHERE email = ?"
+            results = self.db_manager.execute_query(query, (email,))
+            
+            if not results:
+                return False, "not_found"
+                
+            # Generate new activation code
+            activation_code = self._generate_activation_code()
+            
+            # Set new activation expiry (24 hours from now)
+            expiry = time.strftime(
+                '%Y-%m-%d %H:%M:%S', 
+                time.localtime(time.time() + 24 * 60 * 60)
+            )
+            
+            # Update the pending registration
+            update_query = """
+                UPDATE pending_registrations 
+                SET activation_code = ?, activation_expiry = ?
+                WHERE email = ?
+            """
+            
+            result = self.db_manager.execute_update(
+                update_query, (activation_code, expiry, email)
+            )
+            
+            if not result:
+                return False, "update_failed"
+                
+            # In a real application, we would send the activation code via email
+            # For testing purposes, we'll return the activation code
+            return True, activation_code
+        except Exception as e:
+            logger.error(f"Error resending activation code: {str(e)}")
+            return False, "system_error"
     
     def login_user(self, email: str, password: str) -> Tuple[bool, str]:
         """Authenticate a user
@@ -118,22 +286,34 @@ class AuthService:
             tuple: (success, user_id or error_message)
         """
         try:
-            # Get the user's info
-            query = "SELECT id, password_hash, salt FROM users WHERE email = ?"
+            # First check if this email has a pending registration
+            query = "SELECT id FROM pending_registrations WHERE email = ?"
+            results = self.db_manager.execute_query(query, (email,))
+            
+            if results:
+                return False, "not_activated"
+            
+            # Get the user's info from active users
+            query = "SELECT id, password_hash, salt, is_active FROM users WHERE email = ?"
             results = self.db_manager.execute_query(query, (email,))
             
             if not results:
-                return False, "Invalid email or password"
+                return False, "invalid_credentials"
             
             user_id = results[0]['id']
             password_hash = results[0]['password_hash']
             salt = results[0]['salt']
+            is_active = results[0]['is_active']
+            
+            # Check if the account is active
+            if not is_active:
+                return False, "account_inactive"
             
             # Check the password
             calculated_hash, _ = self._hash_password(password, salt)
             
             if calculated_hash != password_hash:
-                return False, "Invalid email or password"
+                return False, "invalid_credentials"
             
             # Update last login time
             now = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -143,7 +323,7 @@ class AuthService:
             return True, str(user_id)
         except Exception as e:
             logger.error(f"Error logging in user: {str(e)}")
-            return False, str(e)
+            return False, "system_error"
     
     def get_user_by_id(self, user_id: str) -> dict:
         """Get user information by ID

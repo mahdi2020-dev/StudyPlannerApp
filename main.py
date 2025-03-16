@@ -192,6 +192,10 @@ def run_replit_web_preview():
                     self.handle_login(form_data)
                 elif self.path == '/register':
                     self.handle_register(form_data)
+                elif self.path == '/activate':
+                    self.handle_activate(form_data)
+                elif self.path == '/resend_code':
+                    self.handle_resend_code(form_data)
                 elif self.path == '/add_transaction' and current_user["user_id"]:
                     self.handle_add_transaction(form_data)
                 elif self.path == '/add_health_metric' and current_user["user_id"]:
@@ -949,21 +953,27 @@ def run_replit_web_preview():
             password = form_data.get('password', [''])[0]
             
             if not email or not password:
-                self.send_redirect('/login?login_error=invalid')
+                self.send_redirect('/login?login_error=incomplete')
                 return
             
             try:
-                success, user_id = auth_service.login_user(email, password)
+                success, result = auth_service.login_user(email, password)
                 
                 if success:
                     # Set user info in the session
-                    current_user["user_id"] = user_id
+                    current_user["user_id"] = result
                     current_user["username"] = email.split('@')[0]  # Simple username extraction
                     
                     # Redirect to dashboard
                     self.send_redirect('/dashboard')
                 else:
-                    self.send_redirect('/login?login_error=invalid')
+                    # Handle different error cases
+                    if result == "not_activated":
+                        self.send_redirect('/login?login_error=not_activated&email=' + urllib.parse.quote(email))
+                    elif result == "account_inactive":
+                        self.send_redirect('/login?login_error=inactive')
+                    else:
+                        self.send_redirect('/login?login_error=invalid')
             except Exception as e:
                 logger.error(f"Login error: {str(e)}")
                 self.send_redirect('/login?login_error=error')
@@ -978,15 +988,69 @@ def run_replit_web_preview():
                 return
             
             try:
-                success, user_id_or_error = auth_service.register_user(email, password, name)
+                success, result = auth_service.register_user(email, password, name)
                 
                 if success:
-                    self.send_redirect('/login?registered=success')
+                    # result contains the activation code
+                    activation_code = result
+                    self.send_redirect(f'/login?registered=success&email={urllib.parse.quote(email)}&code={activation_code}')
                 else:
-                    self.send_redirect('/login?register_error=exists')
+                    if result == "email_exists":
+                        self.send_redirect('/login?register_error=exists')
+                    else:
+                        self.send_redirect('/login?register_error=error')
             except Exception as e:
                 logger.error(f"Registration error: {str(e)}")
                 self.send_redirect('/login?register_error=error')
+                
+        def handle_activate(self, form_data):
+            email = form_data.get('email', [''])[0]
+            activation_code = form_data.get('activation_code', [''])[0]
+            
+            if not email or not activation_code:
+                self.send_redirect('/login?activation_error=incomplete')
+                return
+                
+            try:
+                success, result = auth_service.verify_activation(email, activation_code)
+                
+                if success:
+                    # User is now activated, redirect to login with success message
+                    self.send_redirect('/login?activated=success')
+                else:
+                    # Handle different error cases
+                    if result == "invalid_code":
+                        self.send_redirect('/login?activation_error=invalid&email=' + urllib.parse.quote(email))
+                    elif result == "code_expired":
+                        self.send_redirect('/login?activation_error=expired&email=' + urllib.parse.quote(email))
+                    else:
+                        self.send_redirect('/login?activation_error=error')
+            except Exception as e:
+                logger.error(f"Activation error: {str(e)}")
+                self.send_redirect('/login?activation_error=error')
+                
+        def handle_resend_code(self, form_data):
+            email = form_data.get('email', [''])[0]
+            
+            if not email:
+                self.send_redirect('/login?resend_error=incomplete')
+                return
+                
+            try:
+                success, result = auth_service.resend_activation_code(email)
+                
+                if success:
+                    # result contains the new activation code
+                    activation_code = result
+                    self.send_redirect(f'/login?resend=success&email={urllib.parse.quote(email)}&code={activation_code}')
+                else:
+                    if result == "not_found":
+                        self.send_redirect('/login?resend_error=not_found')
+                    else:
+                        self.send_redirect('/login?resend_error=error')
+            except Exception as e:
+                logger.error(f"Resend code error: {str(e)}")
+                self.send_redirect('/login?resend_error=error')
         
         def handle_api_chat_post(self, json_data):
             if ai_chat_service is None:
