@@ -11,6 +11,12 @@ import sys
 import logging
 from pathlib import Path
 import socket
+import json
+import http.server
+import socketserver
+import urllib.parse
+import base64
+from datetime import datetime, timedelta
 
 # Check if running in Replit environment
 IN_REPLIT = os.environ.get('REPL_ID') is not None
@@ -218,8 +224,8 @@ def run_replit_web_preview():
             self.send_header('Content-type', 'text/html; charset=UTF-8')
             self.end_headers()
             
-            # Define HTML content
-            html_content = f'''
+            # Define HTML content with triple quotes to properly handle CSS content
+            html_content = '''
 <!DOCTYPE html>
 <html lang="fa">
 <head>
@@ -228,7 +234,7 @@ def run_replit_web_preview():
     <title>Persian Life Manager</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
     <style>
-        :root {{
+        :root {
             --main-bg-color: #121212;
             --card-bg-color: #1e1e1e;
             --sidebar-bg-color: #171717;
@@ -236,9 +242,9 @@ def run_replit_web_preview():
             --neon-glow: 0 0 10px rgba(0, 255, 170, 0.7);
             --text-color: #ecf0f1;
             --border-color: #2d2d2d;
-        }}
+        }
         
-        body {{
+        body {
             font-family: 'Vazirmatn', Arial, sans-serif;
             margin: 0;
             padding: 0;
@@ -246,15 +252,15 @@ def run_replit_web_preview():
             color: var(--text-color);
             direction: rtl;
             line-height: 1.6;
-        }}
+        }
         
-        .container {{
+        .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-        }}
+        }
         
-        .hero {{
+        .hero {
             text-align: center;
             padding: 80px 20px;
             background-color: rgba(0, 0, 0, 0.4);
@@ -262,9 +268,9 @@ def run_replit_web_preview():
             border-radius: 10px;
             position: relative;
             overflow: hidden;
-        }}
+        }
         
-        .hero::before {{
+        .hero::before {
             content: '';
             position: absolute;
             top: 0;
@@ -273,31 +279,31 @@ def run_replit_web_preview():
             bottom: 0;
             background: radial-gradient(circle at center, rgba(0, 255, 170, 0.1) 0%, rgba(0, 0, 0, 0) 70%);
             z-index: -1;
-        }}
+        }
         
-        .logo {{
+        .logo {
             font-size: 3rem;
             font-weight: bold;
             color: var(--neon-color);
             text-shadow: var(--neon-glow);
             margin-bottom: 20px;
-        }}
+        }
         
-        .subtitle {{
+        .subtitle {
             font-size: 1.5rem;
             color: var(--text-color);
             margin-bottom: 40px;
-        }}
+        }
         
-        .features {{
+        .features {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
             gap: 30px;
             margin-bottom: 60px;
-        }}
+        }
         
-        .feature-card {{
+        .feature-card {
             background-color: var(--card-bg-color);
             border: 1px solid var(--border-color);
             border-radius: 10px;
@@ -305,33 +311,33 @@ def run_replit_web_preview():
             width: 300px;
             text-align: center;
             transition: all 0.3s ease;
-        }}
+        }
         
-        .feature-card:hover {{
+        .feature-card:hover {
             transform: translateY(-10px);
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2), 0 0 15px rgba(0, 255, 170, 0.3);
             border-color: var(--neon-color);
-        }}
+        }
         
-        .feature-icon {{
+        .feature-icon {
             font-size: 3rem;
             margin-bottom: 20px;
             color: var(--neon-color);
-        }}
+        }
         
-        .feature-title {{
+        .feature-title {
             font-size: 1.5rem;
             font-weight: bold;
             margin-bottom: 15px;
             color: var(--neon-color);
-        }}
+        }
         
-        .cta-container {{
+        .cta-container {
             text-align: center;
             margin: 60px 0;
-        }}
+        }
         
-        .neon-button {{
+        .neon-button {
             display: inline-block;
             background-color: transparent;
             color: var(--neon-color);
@@ -344,34 +350,34 @@ def run_replit_web_preview():
             margin: 10px;
             box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
             transition: all 0.3s ease;
-        }}
+        }
         
-        .neon-button:hover {{
+        .neon-button:hover {
             background-color: rgba(0, 255, 170, 0.1);
             box-shadow: 0 0 20px rgba(0, 255, 170, 0.8);
-        }}
+        }
         
-        .neon-button.alt {{
+        .neon-button.alt {
             color: #00aaff;
             border-color: #00aaff;
             box-shadow: 0 0 10px rgba(0, 170, 255, 0.5);
-        }}
+        }
         
-        .neon-button.alt:hover {{
+        .neon-button.alt:hover {
             background-color: rgba(0, 170, 255, 0.1);
             box-shadow: 0 0 20px rgba(0, 170, 255, 0.8);
-        }}
+        }
         
-        .footer {{
+        .footer {
             text-align: center;
             padding: 40px 0;
             border-top: 1px solid var(--border-color);
             margin-top: 60px;
-        }}
+        }
         
-        .copyright {{
+        .copyright {
             color: rgba(255, 255, 255, 0.5);
-        }}
+        }
     </style>
 </head>
 <body>
@@ -422,8 +428,8 @@ def run_replit_web_preview():
             self.send_header('Content-type', 'text/html; charset=UTF-8')
             self.end_headers()
             
-            # Define HTML content
-            html_content = f'''
+            # Define HTML content with triple quotes for proper formatting
+            html_content = '''
 <!DOCTYPE html>
 <html lang="fa">
 <head>
@@ -432,7 +438,7 @@ def run_replit_web_preview():
     <title>ورود | Persian Life Manager</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
     <style>
-        :root {{
+        :root {
             --main-bg-color: #121212;
             --card-bg-color: #1e1e1e;
             --sidebar-bg-color: #171717;
@@ -442,9 +448,9 @@ def run_replit_web_preview():
             --text-color: #ecf0f1;
             --border-color: #2d2d2d;
             --input-bg: #1a1a1a;
-        }}
+        }
         
-        body {{
+        body {
             font-family: 'Vazirmatn', Arial, sans-serif;
             margin: 0;
             padding: 0;
@@ -452,2925 +458,934 @@ def run_replit_web_preview():
             color: var(--text-color);
             direction: rtl;
             line-height: 1.6;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             min-height: 100vh;
-        }}
-        
-        .login-container {{
             display: flex;
-            width: 900px;
-            max-width: 100%;
-            height: 600px;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .auth-container {
+            max-width: 400px;
+            width: 100%;
+            padding: 40px;
             background-color: var(--card-bg-color);
             border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
-        }}
-        
-        .left-panel {{
-            flex: 1;
-            background-color: #0a0a0a;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 40px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
             position: relative;
             overflow: hidden;
-        }}
+        }
         
-        .left-panel::before {{
+        .auth-container::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at center, rgba(0, 255, 170, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
-            z-index: 0;
-        }}
+            height: 4px;
+            background: linear-gradient(to right, var(--neon-color), var(--neon-blue));
+            box-shadow: 0 0 10px rgba(0, 255, 170, 0.7);
+        }
         
-        .app-title {{
-            font-size: 28px;
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            font-size: 2rem;
             font-weight: bold;
             color: var(--neon-color);
             text-shadow: var(--neon-glow);
-            margin-bottom: 20px;
-            position: relative;
-            z-index: 1;
-        }}
-        
-        .app-subtitle {{
-            font-size: 16px;
-            color: var(--text-color);
-            text-align: center;
-            position: relative;
-            z-index: 1;
-        }}
-        
-        .right-panel {{
-            flex: 1;
-            padding: 40px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }}
-        
-        .login-title {{
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 30px;
-            text-align: center;
-        }}
-        
-        .form-group {{
-            margin-bottom: 20px;
-        }}
-        
-        .form-group label {{
-            display: block;
-            margin-bottom: 8px;
-        }}
-        
-        .form-group input {{
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            background-color: var(--input-bg);
-            color: var(--text-color);
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            font-size: 16px;
-            transition: border-color 0.3s ease;
-        }}
-        
-        .form-group input:focus {{
-            outline: none;
-            border-color: var(--neon-color);
-        }}
-        
-        .form-check {{
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }}
-        
-        .form-check input {{
-            margin-left: 10px;
-        }}
-        
-        .button-group {{
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-        }}
-        
-        .neon-button {{
-            background-color: transparent;
-            color: var(--neon-color);
-            border: 2px solid var(--neon-color);
-            border-radius: 5px;
-            padding: 10px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            text-decoration: none;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
-            transition: all 0.3s ease;
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            flex: 1;
-            margin: 0 5px;
-            text-align: center;
-        }}
-        
-        .neon-button:hover {{
-            background-color: rgba(0, 255, 170, 0.1);
-            box-shadow: 0 0 20px rgba(0, 255, 170, 0.8);
-        }}
-        
-        .neon-button.blue {{
-            color: var(--neon-blue);
-            border-color: var(--neon-blue);
-            box-shadow: 0 0 10px rgba(0, 170, 255, 0.5);
-        }}
-        
-        .neon-button.blue:hover {{
-            background-color: rgba(0, 170, 255, 0.1);
-            box-shadow: 0 0 20px rgba(0, 170, 255, 0.8);
-        }}
-        
-        .back-link {{
-            text-align: center;
-            margin-top: 20px;
-        }}
-        
-        .back-link a {{
-            color: var(--text-color);
-            text-decoration: none;
-            font-size: 14px;
-        }}
-        
-        .back-link a:hover {{
-            color: var(--neon-color);
-        }}
-    </style>
-</head>
-<body>
-    <div class="login-container">
-        <div class="left-panel">
-            <div class="app-title">مدیریت مالی، سلامتی و زمان‌بندی</div>
-            <div class="app-subtitle">سامانه هوشمند برای زندگی مدرن</div>
-        </div>
-        
-        <div class="right-panel">
-            <div class="login-title">ورود به حساب کاربری</div>
-            
-            <form action="/login" method="post">
-                <div class="form-group">
-                    <label for="username">نام کاربری</label>
-                    <input type="text" id="username" name="username" placeholder="نام کاربری خود را وارد کنید" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">رمز عبور</label>
-                    <input type="password" id="password" name="password" placeholder="رمز عبور خود را وارد کنید" required>
-                </div>
-                
-                <div class="form-check">
-                    <input type="checkbox" id="remember" name="remember">
-                    <label for="remember">مرا به خاطر بسپار</label>
-                </div>
-                
-                <div style="color: var(--neon-color); text-align: center; margin-bottom: 15px;">
-                    برای ورود به سیستم، هر نام کاربری و رمز عبور دلخواه را وارد کنید.
-                </div>
-                
-                <div class="button-group">
-                    <button type="submit" class="neon-button">ورود</button>
-                    <button type="submit" class="neon-button blue" formaction="/register">ثبت نام</button>
-                </div>
-            </form>
-            
-            <div class="back-link">
-                <a href="/">بازگشت به صفحه اصلی</a>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
-'''
-            self.wfile.write(html_content.encode('utf-8'))
-        
-        def send_dashboard_page(self):
-            if current_user["user_id"] is None:
-                self.send_redirect('/login')
-                return
-                
-            # Get user data
-            user_id = current_user["user_id"]
-            finance_service = FinanceService(user_id, db_path)
-            health_service = HealthService(user_id, db_path)
-            calendar_service = CalendarService(user_id, db_path)
-            
-            # Get summary data
-            finance_summary = finance_service.get_monthly_summary()
-            upcoming_events = calendar_service.get_upcoming_events(3)
-            pending_tasks = calendar_service.get_pending_tasks(3)
-            
-            # Format data for display
-            total_income = finance_summary.get('income', 0)
-            total_expense = finance_summary.get('expense', 0)
-            balance = total_income - total_expense
-            
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html; charset=UTF-8')
-            self.end_headers()
-            
-            # Create events and tasks HTML
-            events_html = ""
-            if upcoming_events:
-                for event in upcoming_events:
-                    events_html += f'''
-                    <div class="item">
-                        <div class="item-title">{event.title}</div>
-                        <div class="item-date">{event.date}</div>
-                    </div>
-                    '''
-            else:
-                events_html = "<div class='empty-message'>رویدادی وجود ندارد</div>"
-                
-            tasks_html = ""
-            if pending_tasks:
-                for task in pending_tasks:
-                    tasks_html += f'''
-                    <div class="item">
-                        <div class="item-title">{task.title}</div>
-                        <div class="item-date">موعد: {task.due_date}</div>
-                    </div>
-                    '''
-            else:
-                tasks_html = "<div class='empty-message'>وظیفه‌ای وجود ندارد</div>"
-                
-            html_content = f'''
-<!DOCTYPE html>
-<html lang="fa">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>داشبورد | Persian Life Manager</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
-    <style>
-        :root {{
-            --main-bg-color: #121212;
-            --card-bg-color: #1e1e1e;
-            --sidebar-bg-color: #171717;
-            --neon-color: #00ffaa;
-            --neon-blue: #00aaff;
-            --neon-pink: #ff0080;
-            --neon-glow: 0 0 10px rgba(0, 255, 170, 0.7);
-            --text-color: #ecf0f1;
-            --border-color: #2d2d2d;
-            --input-bg: #1a1a1a;
-        }}
-        
-        body {{
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--main-bg-color);
-            color: var(--text-color);
-            direction: rtl;
-            line-height: 1.6;
-        }}
-        
-        .app-container {{
-            display: flex;
-            min-height: 100vh;
-        }}
-        
-        .sidebar {{
-            width: 250px;
-            background-color: var(--sidebar-bg-color);
-            padding: 20px 0;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
-        }}
-        
-        .user-profile {{
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 20px;
-        }}
-        
-        .username {{
-            font-size: 18px;
-            font-weight: bold;
-            color: var(--neon-color);
-            margin-bottom: 5px;
-        }}
-        
-        .nav-menu {{
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }}
-        
-        .nav-item {{
-            padding: 0;
-        }}
-        
-        .nav-link {{
-            display: block;
-            padding: 12px 20px;
-            color: var(--text-color);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            border-right: 3px solid transparent;
-        }}
-        
-        .nav-link:hover {{
-            background-color: rgba(0, 255, 170, 0.1);
-            color: var(--neon-color);
-        }}
-        
-        .nav-link.active {{
-            background-color: rgba(0, 255, 170, 0.2);
-            color: var(--neon-color);
-            border-right-color: var(--neon-color);
-            font-weight: bold;
-        }}
-        
-        .icon {{
-            margin-left: 10px;
-            font-size: 18px;
-        }}
-        
-        .content {{
-            flex: 1;
-            padding: 30px;
-        }}
-        
-        .page-title {{
-            font-size: 24px;
-            margin-bottom: 30px;
-            color: var(--neon-color);
-        }}
-        
-        .date-display {{
-            margin-bottom: 20px;
-            font-size: 16px;
-        }}
-        
-        .cards-container {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }}
-        
-        .card {{
-            background-color: var(--card-bg-color);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--border-color);
-            transition: all 0.3s ease;
-        }}
-        
-        .card:hover {{
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-            border-color: var(--neon-color);
-        }}
-        
-        .card-green {{
-            border-color: var(--neon-color);
-        }}
-        
-        .card-blue {{
-            border-color: var(--neon-blue);
-        }}
-        
-        .card-pink {{
-            border-color: var(--neon-pink);
-        }}
-        
-        .card-title {{
-            font-size: 16px;
-            margin-bottom: 15px;
-            color: var(--text-color);
-        }}
-        
-        .card-value {{
-            font-size: 24px;
-            font-weight: bold;
-        }}
-        
-        .value-positive {{
-            color: var(--neon-color);
-        }}
-        
-        .value-negative {{
-            color: var(--neon-pink);
-        }}
-        
-        .value-neutral {{
-            color: var(--neon-blue);
-        }}
-        
-        .sections-container {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 30px;
-            margin-bottom: 30px;
-        }}
-        
-        .section {{
-            background-color: var(--card-bg-color);
-            border-radius: 10px;
-            padding: 20px;
-            border: 1px solid var(--border-color);
-        }}
-        
-        .section-title {{
-            font-size: 18px;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--neon-color);
-        }}
-        
-        .item {{
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(45, 45, 45, 0.5);
-        }}
-        
-        .item:last-child {{
-            border-bottom: none;
-        }}
-        
-        .item-title {{
-            font-weight: bold;
-            margin-bottom: 5px;
-        }}
-        
-        .item-date {{
-            font-size: 14px;
-            color: rgba(236, 240, 241, 0.7);
-        }}
-        
-        .empty-message {{
-            color: rgba(236, 240, 241, 0.5);
-            text-align: center;
-            padding: 20px;
-        }}
-        
-        .logout {{
-            margin-top: auto;
-            padding: 20px;
-            text-align: center;
-            border-top: 1px solid var(--border-color);
-        }}
-        
-        .logout a {{
-            color: var(--text-color);
-            text-decoration: none;
-        }}
-        
-        .logout a:hover {{
-            color: var(--neon-pink);
-        }}
-    </style>
-</head>
-<body>
-    <div class="app-container">
-        <div class="sidebar">
-            <div class="user-profile">
-                <div class="username">{current_user["username"]}</div>
-            </div>
-            
-            <ul class="nav-menu">
-                <li class="nav-item">
-                    <a href="/dashboard" class="nav-link active">
-                        <span class="icon">🏠</span>
-                        داشبورد
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/finance" class="nav-link">
-                        <span class="icon">💰</span>
-                        مدیریت مالی
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/health" class="nav-link">
-                        <span class="icon">❤️</span>
-                        سلامتی
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/calendar" class="nav-link">
-                        <span class="icon">📅</span>
-                        زمان‌بندی
-                    </a>
-                </li>
-            </ul>
-            
-            <div class="logout">
-                <a href="/logout">
-                    <span class="icon">🚪</span>
-                    خروج
-                </a>
-            </div>
-        </div>
-        
-        <div class="content">
-            <h1 class="page-title">داشبورد</h1>
-            
-            <div class="date-display">تاریخ: {self.get_current_persian_date()}</div>
-            
-            <div class="cards-container">
-                <div class="card card-green">
-                    <div class="card-title">درآمد ماه جاری</div>
-                    <div class="card-value value-positive">{self.format_currency(total_income)} تومان</div>
-                </div>
-                
-                <div class="card card-pink">
-                    <div class="card-title">هزینه ماه جاری</div>
-                    <div class="card-value value-negative">{self.format_currency(total_expense)} تومان</div>
-                </div>
-                
-                <div class="card card-blue">
-                    <div class="card-title">موجودی</div>
-                    <div class="card-value value-neutral">{self.format_currency(balance)} تومان</div>
-                </div>
-            </div>
-            
-            <div class="sections-container">
-                <div class="section">
-                    <h2 class="section-title">رویدادهای پیش رو</h2>
-                    {events_html}
-                </div>
-                
-                <div class="section">
-                    <h2 class="section-title">وظایف در انتظار</h2>
-                    {tasks_html}
-                </div>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
-'''
-            self.wfile.write(html_content.encode('utf-8'))
-            
-        def send_finance_page(self):
-            if current_user["user_id"] is None:
-                self.send_redirect('/login')
-                return
-                
-            # Get finance data
-            user_id = current_user["user_id"]
-            finance_service = FinanceService(user_id, db_path)
-            
-            # Get data
-            categories = finance_service.get_categories()
-            transactions = finance_service.get_transactions(limit=10)
-            
-            # Format category options for select
-            income_options = ""
-            expense_options = ""
-            
-            for category in categories:
-                if category.type == "income" or category.type == "both":
-                    income_options += f'<option value="{category.id}">{category.name}</option>'
-                if category.type == "expense" or category.type == "both":
-                    expense_options += f'<option value="{category.id}">{category.name}</option>'
-            
-            # Format transactions table
-            transactions_html = ""
-            if transactions:
-                for tx in transactions:
-                    tx_type_class = "expense" if tx.type == "expense" else "income"
-                    transactions_html += f'''
-                    <tr class="{tx_type_class}">
-                        <td>{tx.date}</td>
-                        <td>{tx.title}</td>
-                        <td>{tx.category_name}</td>
-                        <td class="{tx_type_class}-amount">{self.format_currency(tx.amount)} تومان</td>
-                    </tr>
-                    '''
-            else:
-                transactions_html = '''
-                <tr>
-                    <td colspan="4" class="empty-message">هیچ تراکنشی ثبت نشده است</td>
-                </tr>
-                '''
-                
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html; charset=UTF-8')
-            self.end_headers()
-            
-            html_content = f'''
-<!DOCTYPE html>
-<html lang="fa">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مدیریت مالی | Persian Life Manager</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
-    <style>
-        :root {{
-            --main-bg-color: #121212;
-            --card-bg-color: #1e1e1e;
-            --sidebar-bg-color: #171717;
-            --neon-color: #00ffaa;
-            --neon-blue: #00aaff;
-            --neon-pink: #ff0080;
-            --neon-glow: 0 0 10px rgba(0, 255, 170, 0.7);
-            --text-color: #ecf0f1;
-            --border-color: #2d2d2d;
-            --input-bg: #1a1a1a;
-        }}
-        
-        body {{
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--main-bg-color);
-            color: var(--text-color);
-            direction: rtl;
-            line-height: 1.6;
-        }}
-        
-        .app-container {{
-            display: flex;
-            min-height: 100vh;
-        }}
-        
-        .sidebar {{
-            width: 250px;
-            background-color: var(--sidebar-bg-color);
-            padding: 20px 0;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
-        }}
-        
-        .user-profile {{
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 20px;
-        }}
-        
-        .username {{
-            font-size: 18px;
-            font-weight: bold;
-            color: var(--neon-color);
-            margin-bottom: 5px;
-        }}
-        
-        .nav-menu {{
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }}
-        
-        .nav-item {{
-            padding: 0;
-        }}
-        
-        .nav-link {{
-            display: block;
-            padding: 12px 20px;
-            color: var(--text-color);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            border-right: 3px solid transparent;
-        }}
-        
-        .nav-link:hover {{
-            background-color: rgba(0, 255, 170, 0.1);
-            color: var(--neon-color);
-        }}
-        
-        .nav-link.active {{
-            background-color: rgba(0, 255, 170, 0.2);
-            color: var(--neon-color);
-            border-right-color: var(--neon-color);
-            font-weight: bold;
-        }}
-        
-        .icon {{
-            margin-left: 10px;
-            font-size: 18px;
-        }}
-        
-        .content {{
-            flex: 1;
-            padding: 30px;
-        }}
-        
-        .page-title {{
-            font-size: 24px;
-            margin-bottom: 30px;
-            color: var(--neon-color);
-        }}
-        
-        .finance-container {{
-            display: grid;
-            grid-template-columns: 1fr 1.5fr;
-            gap: 30px;
-        }}
-        
-        .form-section {{
-            background-color: var(--card-bg-color);
-            border-radius: 10px;
-            padding: 20px;
-            border: 1px solid var(--border-color);
-        }}
-        
-        .form-section-title {{
-            font-size: 18px;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--neon-color);
-        }}
-        
-        .form-group {{
-            margin-bottom: 15px;
-        }}
-        
-        .form-group label {{
-            display: block;
-            margin-bottom: 8px;
-        }}
-        
-        .form-control {{
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            background-color: var(--input-bg);
-            color: var(--text-color);
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            font-size: 14px;
-            transition: border-color 0.3s ease;
-        }}
-        
-        .form-control:focus {{
-            outline: none;
-            border-color: var(--neon-color);
-        }}
-        
-        .tab-container {{
-            margin-bottom: 20px;
-        }}
-        
-        .tab-buttons {{
-            display: flex;
-            margin-bottom: 20px;
-        }}
-        
-        .tab-button {{
-            flex: 1;
-            padding: 10px;
-            text-align: center;
-            background-color: var(--input-bg);
-            color: var(--text-color);
-            border: none;
-            cursor: pointer;
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }}
-        
-        .tab-button:first-child {{
-            border-radius: 0 5px 5px 0;
-        }}
-        
-        .tab-button:last-child {{
-            border-radius: 5px 0 0 5px;
-        }}
-        
-        .tab-button.active {{
-            background-color: rgba(0, 255, 170, 0.2);
-            color: var(--neon-color);
-        }}
-        
-        .tab-content {{
-            display: none;
-        }}
-        
-        .tab-content.active {{
-            display: block;
-        }}
-        
-        .transactions-section {{
-            background-color: var(--card-bg-color);
-            border-radius: 10px;
-            padding: 20px;
-            border: 1px solid var(--border-color);
-        }}
-        
-        .transactions-table {{
-            width: 100%;
-            border-collapse: collapse;
-        }}
-        
-        .transactions-table th,
-        .transactions-table td {{
-            padding: 12px 15px;
-            text-align: right;
-            border-bottom: 1px solid var(--border-color);
-        }}
-        
-        .transactions-table th {{
-            background-color: var(--input-bg);
-            font-weight: bold;
-        }}
-        
-        .expense-amount {{
-            color: var(--neon-pink);
-        }}
-        
-        .income-amount {{
-            color: var(--neon-color);
-        }}
-        
-        .neon-button {{
-            background-color: transparent;
-            color: var(--neon-color);
-            border: 2px solid var(--neon-color);
-            border-radius: 5px;
-            padding: 10px 20px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
-            transition: all 0.3s ease;
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            display: inline-block;
-            margin-top: 15px;
-        }}
-        
-        .neon-button:hover {{
-            background-color: rgba(0, 255, 170, 0.1);
-            box-shadow: 0 0 20px rgba(0, 255, 170, 0.8);
-        }}
-        
-        .neon-button.pink {{
-            color: var(--neon-pink);
-            border-color: var(--neon-pink);
-            box-shadow: 0 0 10px rgba(255, 0, 128, 0.5);
-        }}
-        
-        .neon-button.pink:hover {{
-            background-color: rgba(255, 0, 128, 0.1);
-            box-shadow: 0 0 20px rgba(255, 0, 128, 0.8);
-        }}
-        
-        .logout {{
-            margin-top: auto;
-            padding: 20px;
-            text-align: center;
-            border-top: 1px solid var(--border-color);
-        }}
-        
-        .logout a {{
-            color: var(--text-color);
-            text-decoration: none;
-        }}
-        
-        .logout a:hover {{
-            color: var(--neon-pink);
-        }}
-        
-        .empty-message {{
-            color: rgba(236, 240, 241, 0.5);
-            text-align: center;
-            padding: 20px;
-        }}
-    </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {{
-            // Tab switching functionality
-            const tabButtons = document.querySelectorAll('.tab-button');
-            const tabContents = document.querySelectorAll('.tab-content');
-            
-            tabButtons.forEach(button => {{
-                button.addEventListener('click', () => {{
-                    // Remove active class from all buttons and contents
-                    tabButtons.forEach(btn => btn.classList.remove('active'));
-                    tabContents.forEach(content => content.classList.remove('active'));
-                    
-                    // Add active class to clicked button and corresponding content
-                    button.classList.add('active');
-                    const tabId = button.getAttribute('data-tab');
-                    document.getElementById(tabId).classList.add('active');
-                }});
-            }});
-        }});
-    </script>
-</head>
-<body>
-    <div class="app-container">
-        <div class="sidebar">
-            <div class="user-profile">
-                <div class="username">{current_user["username"]}</div>
-            </div>
-            
-            <ul class="nav-menu">
-                <li class="nav-item">
-                    <a href="/dashboard" class="nav-link">
-                        <span class="icon">🏠</span>
-                        داشبورد
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/finance" class="nav-link active">
-                        <span class="icon">💰</span>
-                        مدیریت مالی
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/health" class="nav-link">
-                        <span class="icon">❤️</span>
-                        سلامتی
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/calendar" class="nav-link">
-                        <span class="icon">📅</span>
-                        زمان‌بندی
-                    </a>
-                </li>
-            </ul>
-            
-            <div class="logout">
-                <a href="/logout">
-                    <span class="icon">🚪</span>
-                    خروج
-                </a>
-            </div>
-        </div>
-        
-        <div class="content">
-            <h1 class="page-title">مدیریت مالی</h1>
-            
-            <div class="finance-container">
-                <div class="form-section">
-                    <h2 class="form-section-title">ثبت تراکنش جدید</h2>
-                    
-                    <div class="tab-container">
-                        <div class="tab-buttons">
-                            <button class="tab-button active" data-tab="expense-tab">هزینه</button>
-                            <button class="tab-button" data-tab="income-tab">درآمد</button>
-                        </div>
-                        
-                        <div id="expense-tab" class="tab-content active">
-                            <form action="/add_transaction" method="post">
-                                <input type="hidden" name="type" value="expense">
-                                
-                                <div class="form-group">
-                                    <label for="expense-title">عنوان</label>
-                                    <input type="text" class="form-control" id="expense-title" name="title" required>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="expense-amount">مبلغ (تومان)</label>
-                                    <input type="number" class="form-control" id="expense-amount" name="amount" required>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="expense-category">دسته‌بندی</label>
-                                    <select class="form-control" id="expense-category" name="category_id" required>
-                                        {expense_options}
-                                    </select>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="expense-date">تاریخ</label>
-                                    <input type="date" class="form-control" id="expense-date" name="date" required>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="expense-description">توضیحات (اختیاری)</label>
-                                    <textarea class="form-control" id="expense-description" name="description" rows="3"></textarea>
-                                </div>
-                                
-                                <button type="submit" class="neon-button pink">ثبت هزینه</button>
-                            </form>
-                        </div>
-                        
-                        <div id="income-tab" class="tab-content">
-                            <form action="/add_transaction" method="post">
-                                <input type="hidden" name="type" value="income">
-                                
-                                <div class="form-group">
-                                    <label for="income-title">عنوان</label>
-                                    <input type="text" class="form-control" id="income-title" name="title" required>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="income-amount">مبلغ (تومان)</label>
-                                    <input type="number" class="form-control" id="income-amount" name="amount" required>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="income-category">دسته‌بندی</label>
-                                    <select class="form-control" id="income-category" name="category_id" required>
-                                        {income_options}
-                                    </select>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="income-date">تاریخ</label>
-                                    <input type="date" class="form-control" id="income-date" name="date" required>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="income-description">توضیحات (اختیاری)</label>
-                                    <textarea class="form-control" id="income-description" name="description" rows="3"></textarea>
-                                </div>
-                                
-                                <button type="submit" class="neon-button">ثبت درآمد</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="transactions-section">
-                    <h2 class="form-section-title">تراکنش‌های اخیر</h2>
-                    
-                    <table class="transactions-table">
-                        <thead>
-                            <tr>
-                                <th>تاریخ</th>
-                                <th>عنوان</th>
-                                <th>دسته‌بندی</th>
-                                <th>مبلغ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {transactions_html}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
-'''
-            self.wfile.write(html_content.encode('utf-8'))
-            
-        def send_health_page(self):
-            if current_user["user_id"] is None:
-                self.send_redirect('/login')
-                return
-                
-            # Get health data
-            user_id = current_user["user_id"]
-            health_service = HealthService(user_id, db_path)
-            
-            # Get data
-            exercises = health_service.get_exercises(limit=5)
-            metrics = health_service.get_metrics(limit=5)
-            goals = health_service.get_goals()
-            
-            # Format exercise list
-            exercises_html = ""
-            if exercises:
-                for exercise in exercises:
-                    exercises_html += f'''
-                    <tr>
-                        <td>{exercise.date}</td>
-                        <td>{exercise.exercise_type}</td>
-                        <td>{exercise.duration} دقیقه</td>
-                        <td>{exercise.calories_burned} کالری</td>
-                    </tr>
-                    '''
-            else:
-                exercises_html = '''
-                <tr>
-                    <td colspan="4" class="empty-message">هیچ فعالیت ورزشی ثبت نشده است</td>
-                </tr>
-                '''
-                
-            # Format metrics list
-            metrics_html = ""
-            if metrics:
-                for metric in metrics:
-                    weight_str = f"{metric.weight} کیلوگرم" if metric.weight else "-"
-                    bp_str = f"{metric.systolic}/{metric.diastolic}" if metric.systolic and metric.diastolic else "-"
-                    heart_rate_str = f"{metric.heart_rate} bpm" if metric.heart_rate else "-"
-                    sleep_str = f"{metric.sleep_hours} ساعت" if metric.sleep_hours else "-"
-                    
-                    metrics_html += f'''
-                    <tr>
-                        <td>{metric.date}</td>
-                        <td>{weight_str}</td>
-                        <td>{bp_str}</td>
-                        <td>{heart_rate_str}</td>
-                        <td>{sleep_str}</td>
-                    </tr>
-                    '''
-            else:
-                metrics_html = '''
-                <tr>
-                    <td colspan="5" class="empty-message">هیچ معیار سلامتی ثبت نشده است</td>
-                </tr>
-                '''
-                
-            # Format goals list
-            goals_html = ""
-            if goals:
-                for goal in goals:
-                    progress_style = f"width: {goal.progress}%"
-                    progress_class = "good" if goal.progress >= 75 else "medium" if goal.progress >= 40 else "low"
-                    
-                    goals_html += f'''
-                    <div class="goal-item">
-                        <div class="goal-info">
-                            <div class="goal-title">{goal.goal_type}: {goal.target_value}</div>
-                            <div class="goal-deadline">موعد: {goal.deadline}</div>
-                        </div>
-                        <div class="goal-progress-container">
-                            <div class="goal-progress-bar {progress_class}" style="{progress_style}"></div>
-                            <div class="goal-progress-text">{goal.progress}%</div>
-                        </div>
-                    </div>
-                    '''
-            else:
-                goals_html = '<div class="empty-message">هیچ هدفی تعریف نشده است</div>'
-                
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html; charset=UTF-8')
-            self.end_headers()
-            
-            html_content = f'''
-<!DOCTYPE html>
-<html lang="fa">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سلامتی | Persian Life Manager</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
-    <style>
-        :root {{
-            --main-bg-color: #121212;
-            --card-bg-color: #1e1e1e;
-            --sidebar-bg-color: #171717;
-            --neon-color: #00ffaa;
-            --neon-blue: #00aaff;
-            --neon-pink: #ff0080;
-            --neon-glow: 0 0 10px rgba(0, 255, 170, 0.7);
-            --text-color: #ecf0f1;
-            --border-color: #2d2d2d;
-            --input-bg: #1a1a1a;
-        }}
-        
-        body {{
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--main-bg-color);
-            color: var(--text-color);
-            direction: rtl;
-            line-height: 1.6;
-        }}
-        
-        .app-container {{
-            display: flex;
-            min-height: 100vh;
-        }}
-        
-        .sidebar {{
-            width: 250px;
-            background-color: var(--sidebar-bg-color);
-            padding: 20px 0;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
-        }}
-        
-        .user-profile {{
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 20px;
-        }}
-        
-        .username {{
-            font-size: 18px;
-            font-weight: bold;
-            color: var(--neon-color);
-            margin-bottom: 5px;
-        }}
-        
-        .nav-menu {{
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }}
-        
-        .nav-item {{
-            padding: 0;
-        }}
-        
-        .nav-link {{
-            display: block;
-            padding: 12px 20px;
-            color: var(--text-color);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            border-right: 3px solid transparent;
-        }}
-        
-        .nav-link:hover {{
-            background-color: rgba(0, 255, 170, 0.1);
-            color: var(--neon-color);
-        }}
-        
-        .nav-link.active {{
-            background-color: rgba(0, 255, 170, 0.2);
-            color: var(--neon-color);
-            border-right-color: var(--neon-color);
-            font-weight: bold;
-        }}
-        
-        .icon {{
-            margin-left: 10px;
-            font-size: 18px;
-        }}
-        
-        .content {{
-            flex: 1;
-            padding: 30px;
-        }}
-        
-        .page-title {{
-            font-size: 24px;
-            margin-bottom: 30px;
-            color: var(--neon-color);
-        }}
-        
-        .health-container {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-        }}
-        
-        .form-section {{
-            background-color: var(--card-bg-color);
-            border-radius: 10px;
-            padding: 20px;
-            border: 1px solid var(--border-color);
-            grid-column: 1;
-        }}
-        
-        .data-section {{
-            background-color: var(--card-bg-color);
-            border-radius: 10px;
-            padding: 20px;
-            border: 1px solid var(--border-color);
-            grid-column: 2;
-        }}
-        
-        .goals-section {{
-            background-color: var(--card-bg-color);
-            border-radius: 10px;
-            padding: 20px;
-            border: 1px solid var(--border-color);
-            grid-column: 1 / -1;
-        }}
-        
-        .section-title {{
-            font-size: 18px;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--neon-color);
-        }}
-        
-        .form-group {{
-            margin-bottom: 15px;
-        }}
-        
-        .form-group label {{
-            display: block;
-            margin-bottom: 8px;
-        }}
-        
-        .form-control {{
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            background-color: var(--input-bg);
-            color: var(--text-color);
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            font-size: 14px;
-            transition: border-color 0.3s ease;
-        }}
-        
-        .form-control:focus {{
-            outline: none;
-            border-color: var(--neon-color);
-        }}
-        
-        .tab-container {{
-            margin-bottom: 20px;
-        }}
-        
-        .tab-buttons {{
-            display: flex;
-            margin-bottom: 20px;
-        }}
-        
-        .tab-button {{
-            flex: 1;
-            padding: 10px;
-            text-align: center;
-            background-color: var(--input-bg);
-            color: var(--text-color);
-            border: none;
-            cursor: pointer;
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }}
-        
-        .tab-button:first-child {{
-            border-radius: 0 5px 5px 0;
-        }}
-        
-        .tab-button:last-child {{
-            border-radius: 5px 0 0 5px;
-        }}
-        
-        .tab-button.active {{
-            background-color: rgba(0, 255, 170, 0.2);
-            color: var(--neon-color);
-        }}
-        
-        .tab-content {{
-            display: none;
-        }}
-        
-        .tab-content.active {{
-            display: block;
-        }}
-        
-        .data-table {{
-            width: 100%;
-            border-collapse: collapse;
-        }}
-        
-        .data-table th,
-        .data-table td {{
-            padding: 12px 15px;
-            text-align: right;
-            border-bottom: 1px solid var(--border-color);
-        }}
-        
-        .data-table th {{
-            background-color: var(--input-bg);
-            font-weight: bold;
-        }}
-        
-        .goal-item {{
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            background-color: var(--input-bg);
-        }}
-        
-        .goal-info {{
             margin-bottom: 10px;
-        }}
+        }
         
-        .goal-title {{
-            font-weight: bold;
-            font-size: 16px;
-        }}
-        
-        .goal-deadline {{
-            font-size: 14px;
-            color: rgba(236, 240, 241, 0.7);
-        }}
-        
-        .goal-progress-container {{
-            height: 20px;
-            background-color: #2d2d2d;
-            border-radius: 10px;
-            position: relative;
-            overflow: hidden;
-        }}
-        
-        .goal-progress-bar {{
-            height: 100%;
-            background-color: var(--neon-color);
-            border-radius: 10px;
-            transition: width 0.5s ease;
-        }}
-        
-        .goal-progress-bar.low {{
-            background-color: var(--neon-pink);
-        }}
-        
-        .goal-progress-bar.medium {{
-            background-color: var(--neon-blue);
-        }}
-        
-        .goal-progress-text {{
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+        .auth-tabs {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: #fff;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-        }}
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
         
-        .neon-button {{
+        .auth-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .auth-tab.active {
+            color: var(--neon-color);
+            font-weight: bold;
+            border-bottom: 2px solid var(--neon-color);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            color: var(--text-color);
+            font-family: 'Vazirmatn', Arial, sans-serif;
+            transition: all 0.3s ease;
+        }
+        
+        .form-input:focus {
+            border-color: var(--neon-color);
+            box-shadow: 0 0 5px rgba(0, 255, 170, 0.3);
+            outline: none;
+        }
+        
+        .neon-button {
+            display: block;
+            width: 100%;
+            padding: 12px;
             background-color: transparent;
             color: var(--neon-color);
             border: 2px solid var(--neon-color);
             border-radius: 5px;
-            padding: 10px 20px;
-            font-size: 14px;
+            font-size: 1rem;
             font-weight: bold;
+            text-decoration: none;
+            text-align: center;
+            margin-top: 30px;
             cursor: pointer;
-            box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
+            box-shadow: 0 0 10px rgba(0, 255, 170, 0.3);
             transition: all 0.3s ease;
             font-family: 'Vazirmatn', Arial, sans-serif;
-            display: inline-block;
-            margin-top: 15px;
-        }}
+        }
         
-        .neon-button:hover {{
+        .neon-button:hover {
             background-color: rgba(0, 255, 170, 0.1);
-            box-shadow: 0 0 20px rgba(0, 255, 170, 0.8);
-        }}
+            box-shadow: 0 0 15px rgba(0, 255, 170, 0.5);
+        }
         
-        .neon-button.blue {{
-            color: var(--neon-blue);
-            border-color: var(--neon-blue);
-            box-shadow: 0 0 10px rgba(0, 170, 255, 0.5);
-        }}
-        
-        .neon-button.blue:hover {{
-            background-color: rgba(0, 170, 255, 0.1);
-            box-shadow: 0 0 20px rgba(0, 170, 255, 0.8);
-        }}
-        
-        .logout {{
-            margin-top: auto;
-            padding: 20px;
+        .form-footer {
             text-align: center;
-            border-top: 1px solid var(--border-color);
-        }}
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
         
-        .logout a {{
-            color: var(--text-color);
+        .form-footer a {
+            color: var(--neon-color);
             text-decoration: none;
-        }}
+        }
         
-        .logout a:hover {{
-            color: var(--neon-pink);
-        }}
+        .error-message {
+            color: #ff5555;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            display: none;
+        }
         
-        .empty-message {{
-            color: rgba(236, 240, 241, 0.5);
-            text-align: center;
-            padding: 20px;
-        }}
-        
-        .ai-advice-section {{
-            background-color: var(--card-bg-color);
-            border-radius: 10px;
-            padding: 20px;
-            border: 1px solid var(--neon-blue);
-            grid-column: 1 / -1;
-            margin-top: 30px;
-        }}
-        
-        .ai-title {{
-            color: var(--neon-blue);
-            display: flex;
-            align-items: center;
-        }}
-        
-        .ai-title .ai-icon {{
-            margin-left: 10px;
-            font-size: 24px;
-        }}
+        #register-form {
+            display: none;
+        }
     </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {{
-            // Tab switching functionality
-            const tabButtons = document.querySelectorAll('.tab-button');
-            const tabContents = document.querySelectorAll('.tab-content');
-            
-            tabButtons.forEach(button => {{
-                button.addEventListener('click', () => {{
-                    // Remove active class from all buttons and contents
-                    tabButtons.forEach(btn => btn.classList.remove('active'));
-                    tabContents.forEach(content => content.classList.remove('active'));
-                    
-                    // Add active class to clicked button and corresponding content
-                    button.classList.add('active');
-                    const tabId = button.getAttribute('data-tab');
-                    document.getElementById(tabId).classList.add('active');
-                }});
-            }});
-        }});
-    </script>
 </head>
 <body>
-    <div class="app-container">
-        <div class="sidebar">
-            <div class="user-profile">
-                <div class="username">{current_user["username"]}</div>
-            </div>
-            
-            <ul class="nav-menu">
-                <li class="nav-item">
-                    <a href="/dashboard" class="nav-link">
-                        <span class="icon">🏠</span>
-                        داشبورد
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/finance" class="nav-link">
-                        <span class="icon">💰</span>
-                        مدیریت مالی
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/health" class="nav-link active">
-                        <span class="icon">❤️</span>
-                        سلامتی
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/calendar" class="nav-link">
-                        <span class="icon">📅</span>
-                        زمان‌بندی
-                    </a>
-                </li>
-            </ul>
-            
-            <div class="logout">
-                <a href="/logout">
-                    <span class="icon">🚪</span>
-                    خروج
-                </a>
-            </div>
+    <div class="auth-container">
+        <div class="auth-header">
+            <div class="logo">Persian Life Manager</div>
         </div>
         
-        <div class="content">
-            <h1 class="page-title">پیگیری سلامتی</h1>
-            
-            <div class="health-container">
-                <div class="form-section">
-                    <h2 class="section-title">ثبت فعالیت ورزشی</h2>
-                    
-                    <form action="/add_health_metric" method="post">
-                        <input type="hidden" name="type" value="exercise">
-                        
-                        <div class="form-group">
-                            <label for="exercise-type">نوع فعالیت</label>
-                            <select class="form-control" id="exercise-type" name="exercise_type" required>
-                                <option value="walking">پیاده‌روی</option>
-                                <option value="running">دویدن</option>
-                                <option value="cycling">دوچرخه‌سواری</option>
-                                <option value="swimming">شنا</option>
-                                <option value="gym">باشگاه بدنسازی</option>
-                                <option value="yoga">یوگا</option>
-                                <option value="other">سایر</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="exercise-duration">مدت زمان (دقیقه)</label>
-                            <input type="number" class="form-control" id="exercise-duration" name="duration" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="exercise-calories">کالری سوزانده شده (تخمینی)</label>
-                            <input type="number" class="form-control" id="exercise-calories" name="calories_burned">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="exercise-date">تاریخ</label>
-                            <input type="date" class="form-control" id="exercise-date" name="date" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="exercise-notes">یادداشت (اختیاری)</label>
-                            <textarea class="form-control" id="exercise-notes" name="notes" rows="2"></textarea>
-                        </div>
-                        
-                        <button type="submit" class="neon-button">ثبت فعالیت</button>
-                    </form>
-                </div>
-                
-                <div class="data-section">
-                    <h2 class="section-title">فعالیت‌های اخیر</h2>
-                    
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>تاریخ</th>
-                                <th>نوع فعالیت</th>
-                                <th>مدت زمان</th>
-                                <th>کالری</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {exercises_html}
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div class="form-section">
-                    <h2 class="section-title">ثبت معیارهای سلامتی</h2>
-                    
-                    <form action="/add_health_metric" method="post">
-                        <input type="hidden" name="type" value="metrics">
-                        
-                        <div class="form-group">
-                            <label for="weight">وزن (کیلوگرم)</label>
-                            <input type="number" step="0.1" class="form-control" id="weight" name="weight">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="systolic">فشار خون (سیستولیک)</label>
-                            <input type="number" class="form-control" id="systolic" name="systolic">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="diastolic">فشار خون (دیاستولیک)</label>
-                            <input type="number" class="form-control" id="diastolic" name="diastolic">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="heart-rate">ضربان قلب (bpm)</label>
-                            <input type="number" class="form-control" id="heart-rate" name="heart_rate">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="sleep-hours">ساعات خواب</label>
-                            <input type="number" step="0.5" class="form-control" id="sleep-hours" name="sleep_hours">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="metrics-date">تاریخ</label>
-                            <input type="date" class="form-control" id="metrics-date" name="date" required>
-                        </div>
-                        
-                        <button type="submit" class="neon-button blue">ثبت معیارها</button>
-                    </form>
-                </div>
-                
-                <div class="data-section">
-                    <h2 class="section-title">معیارهای سلامتی اخیر</h2>
-                    
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>تاریخ</th>
-                                <th>وزن</th>
-                                <th>فشار خون</th>
-                                <th>ضربان قلب</th>
-                                <th>خواب</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {metrics_html}
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div class="goals-section">
-                    <h2 class="section-title">اهداف سلامتی</h2>
-                    
-                    <div class="goals-container">
-                        {goals_html}
-                    </div>
-                </div>
-                
-                <div class="ai-advice-section">
-                    <h2 class="section-title ai-title">
-                        <span class="ai-icon">🤖</span>
-                        دریافت توصیه هوشمند
-                    </h2>
-                    
-                    <form action="/api/health_advice" method="post" id="adviceForm">
-                        <div class="form-group">
-                            <label for="height">قد (سانتی‌متر)</label>
-                            <input type="number" class="form-control" id="height" name="height" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="weight-advice">وزن (کیلوگرم)</label>
-                            <input type="number" step="0.1" class="form-control" id="weight-advice" name="weight" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="activity-level">سطح فعالیت</label>
-                            <select class="form-control" id="activity-level" name="activity_level" required>
-                                <option value="sedentary">کم تحرک</option>
-                                <option value="light">فعالیت سبک</option>
-                                <option value="moderate">فعالیت متوسط</option>
-                                <option value="high">فعالیت زیاد</option>
-                                <option value="athlete">ورزشکار</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="health-conditions">شرایط سلامتی (اختیاری)</label>
-                            <textarea class="form-control" id="health-conditions" name="health_conditions" rows="2" placeholder="مانند: دیابت، فشار خون بالا"></textarea>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="goal-focus">هدف اصلی</label>
-                            <select class="form-control" id="goal-focus" name="goal_focus" required>
-                                <option value="weight_loss">کاهش وزن</option>
-                                <option value="weight_gain">افزایش وزن</option>
-                                <option value="maintain">حفظ وزن</option>
-                                <option value="fitness">افزایش تناسب اندام</option>
-                                <option value="health">بهبود سلامت عمومی</option>
-                            </select>
-                        </div>
-                        
-                        <button type="submit" class="neon-button blue">دریافت توصیه هوشمند</button>
-                    </form>
-                    
-                    <div id="advice-result" style="margin-top: 20px; padding: 15px; border-radius: 5px; background-color: rgba(0, 170, 255, 0.1); border: 1px solid var(--neon-blue); display: none;"></div>
-                </div>
+        <div class="auth-tabs">
+            <div class="auth-tab active" id="login-tab">ورود</div>
+            <div class="auth-tab" id="register-tab">ثبت نام</div>
+        </div>
+        
+        <form action="/login" method="post" id="login-form">
+            <div class="form-group">
+                <label class="form-label" for="login-email">ایمیل</label>
+                <input type="email" class="form-input" id="login-email" name="email" required>
             </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="login-password">رمز عبور</label>
+                <input type="password" class="form-input" id="login-password" name="password" required>
+                <div class="error-message" id="login-error"></div>
+            </div>
+            
+            <button type="submit" class="neon-button">ورود</button>
+            
+            <div class="form-footer">
+                حساب کاربری ندارید؟ <a href="#" id="switch-to-register">ثبت نام کنید</a>
+            </div>
+        </form>
+        
+        <form action="/register" method="post" id="register-form">
+            <div class="form-group">
+                <label class="form-label" for="register-name">نام</label>
+                <input type="text" class="form-input" id="register-name" name="name" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="register-email">ایمیل</label>
+                <input type="email" class="form-input" id="register-email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="register-password">رمز عبور</label>
+                <input type="password" class="form-input" id="register-password" name="password" required>
+                <div class="error-message" id="register-error"></div>
+            </div>
+            
+            <button type="submit" class="neon-button">ثبت نام</button>
+            
+            <div class="form-footer">
+                حساب کاربری دارید؟ <a href="#" id="switch-to-login">وارد شوید</a>
+            </div>
+        </form>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginTab = document.getElementById('login-tab');
+            const registerTab = document.getElementById('register-tab');
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            const switchToRegister = document.getElementById('switch-to-register');
+            const switchToLogin = document.getElementById('switch-to-login');
+            
+            // Switch to register tab/form
+            function showRegisterForm() {
+                loginTab.classList.remove('active');
+                registerTab.classList.add('active');
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+            }
+            
+            // Switch to login tab/form
+            function showLoginForm() {
+                registerTab.classList.remove('active');
+                loginTab.classList.add('active');
+                registerForm.style.display = 'none';
+                loginForm.style.display = 'block';
+            }
+            
+            // Event listeners
+            registerTab.addEventListener('click', showRegisterForm);
+            loginTab.addEventListener('click', showLoginForm);
+            switchToRegister.addEventListener('click', function(e) {
+                e.preventDefault();
+                showRegisterForm();
+            });
+            switchToLogin.addEventListener('click', function(e) {
+                e.preventDefault();
+                showLoginForm();
+            });
+            
+            // URL parameters handling for error messages
+            const urlParams = new URLSearchParams(window.location.search);
+            const loginError = urlParams.get('login_error');
+            const registerError = urlParams.get('register_error');
+            const registered = urlParams.get('registered');
+            
+            if (loginError) {
+                const errorElem = document.getElementById('login-error');
+                errorElem.textContent = loginError;
+                errorElem.style.display = 'block';
+            }
+            
+            if (registerError) {
+                showRegisterForm();
+                const errorElem = document.getElementById('register-error');
+                errorElem.textContent = registerError;
+                errorElem.style.display = 'block';
+            }
+            
+            if (registered === 'success') {
+                const errorElem = document.getElementById('login-error');
+                errorElem.textContent = 'ثبت نام با موفقیت انجام شد. اکنون می‌توانید وارد شوید.';
+                errorElem.style.display = 'block';
+                errorElem.style.color = '#00ffaa';
+            }
+        });
+    </script>
+</body>
+</html>
+'''
+            self.wfile.write(html_content.encode('utf-8'))
+        
+        def send_ai_chat_page(self):
+            """Send the AI chat interface page"""
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=UTF-8')
+            self.end_headers()
+            
+            # Define HTML content - using a simple approach to avoid syntax issues
+            username = current_user["username"] if current_user["username"] else "کاربر"
+            
+            html_content = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>چت هوشمند</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ecf0f1;
+            direction: rtl;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar {
+            background-color: #1e1e1e;
+            padding: 15px;
+            text-align: center;
+        }
+        .content {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .chat-container {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .ai-message {
+            background-color: rgba(0, 255, 170, 0.1);
+            border: 1px solid #00ffaa;
+        }
+        .user-message {
+            background-color: rgba(0, 170, 255, 0.1);
+            border: 1px solid #00aaff;
+            text-align: left;
+        }
+        .input-area {
+            display: flex;
+            margin-top: 20px;
+        }
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #2d2d2d;
+            background-color: #1a1a1a;
+            color: #ecf0f1;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: transparent;
+            color: #00ffaa;
+            border: 1px solid #00ffaa;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        h1, h2 {
+            color: #00ffaa;
+        }
+        a {
+            color: #ecf0f1;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>Persian Life Manager</h1>
+        <div>
+            <a href="/dashboard">داشبورد</a>
+            <a href="/finance">مالی</a>
+            <a href="/health">سلامت</a>
+            <a href="/calendar">تقویم</a>
+            <a href="/ai-chat">چت هوشمند</a>
+            <a href="/logout">خروج</a>
+        </div>
+    </div>
+    
+    <div class="content">
+        <h2>چت هوشمند</h2>
+        
+        <div class="chat-container" id="chat-container">
+            <div class="message ai-message">سلام ''' + username + '''! من دستیار هوشمند Persian Life Manager هستم. چطور می‌توانم به شما کمک کنم؟</div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="پیام خود را بنویسید...">
+            <button id="send-button">ارسال</button>
         </div>
     </div>
     
     <script>
-        // Handle AI advice form submission
-        document.getElementById('adviceForm').addEventListener('submit', function(event) {{
-            event.preventDefault();
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatContainer = document.getElementById('chat-container');
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            let chatHistory = [];
             
-            // Get form data
-            const formData = new FormData(this);
-            const formParams = new URLSearchParams();
+            function addMessage(content, isUser) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message');
+                messageDiv.classList.add(isUser ? 'user-message' : 'ai-message');
+                messageDiv.textContent = content;
+                chatContainer.appendChild(messageDiv);
+            }
             
-            for (const pair of formData) {{
-                formParams.append(pair[0], pair[1]);
-            }}
+            async function sendMessage(message) {
+                if (!message.trim()) return;
+                
+                addMessage(message, true);
+                
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            history: chatHistory
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        addMessage('متأسفانه خطایی رخ داد: ' + data.error, false);
+                    } else {
+                        addMessage(data.response, false);
+                        
+                        chatHistory.push({
+                            role: 'user',
+                            content: message
+                        });
+                        
+                        chatHistory.push({
+                            role: 'assistant',
+                            content: data.response
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    addMessage('متأسفانه خطایی رخ داد. لطفاً دوباره تلاش کنید.', false);
+                }
+            }
             
-            // Show loading
-            const resultDiv = document.getElementById('advice-result');
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = 'در حال دریافت توصیه...';
+            sendButton.addEventListener('click', function() {
+                const message = userInput.value;
+                if (message.trim()) {
+                    sendMessage(message);
+                    userInput.value = '';
+                }
+            });
             
-            // Send request
-            fetch('/api/health_advice', {{
-                method: 'POST',
-                body: formParams,
-                headers: {{
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }}
-            }})
-            .then(response => response.json())
-            .then(data => {{
-                if (data.success) {{
-                    resultDiv.innerHTML = data.advice;
-                }} else {{
-                    resultDiv.innerHTML = 'خطا در دریافت توصیه. لطفا دوباره تلاش کنید.';
-                }}
-            }})
-            .catch(error => {{
-                resultDiv.innerHTML = 'خطا در ارتباط با سرور. لطفا دوباره تلاش کنید.';
-                console.error('Error:', error);
-            }});
-        }});
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const message = userInput.value;
+                    if (message.trim()) {
+                        sendMessage(message);
+                        userInput.value = '';
+                    }
+                }
+            });
+        });
     </script>
+</body>
+</html>
+'''
+            self.wfile.write(html_content.encode('utf-8'))
+
+        def handle_login(self, form_data):
+            email = form_data.get('email', [''])[0]
+            password = form_data.get('password', [''])[0]
+            
+            if not email or not password:
+                self.send_redirect('/login?login_error=لطفا تمام فیلدها را تکمیل کنید')
+                return
+            
+            success, user_id = auth_service.login_user(email, password)
+            
+            if success:
+                # Set user info in the session
+                current_user["user_id"] = user_id
+                current_user["username"] = email.split('@')[0]  # Simple username extraction
+                
+                # Redirect to dashboard
+                self.send_redirect('/dashboard')
+            else:
+                self.send_redirect('/login?login_error=ایمیل یا رمز عبور نادرست است')
+        
+        def handle_register(self, form_data):
+            name = form_data.get('name', [''])[0]
+            email = form_data.get('email', [''])[0]
+            password = form_data.get('password', [''])[0]
+            
+            if not name or not email or not password:
+                self.send_redirect('/login?register_error=لطفا تمام فیلدها را تکمیل کنید')
+                return
+            
+            success, user_id_or_error = auth_service.register_user(email, password, name)
+            
+            if success:
+                self.send_redirect('/login?registered=success')
+            else:
+                self.send_redirect(f'/login?register_error={user_id_or_error}')
+        
+        def handle_api_chat_post(self, json_data):
+            if ai_chat_service is None:
+                self.send_json_response({"error": "AI Chat Service is not available"})
+                return
+            
+            message = json_data.get('message', '')
+            history = json_data.get('history', [])
+            
+            if not message:
+                self.send_json_response({"error": "Message is required"})
+                return
+            
+            try:
+                # Get user data for context
+                finance_service = FinanceService(current_user["user_id"])
+                health_service = HealthService(current_user["user_id"])
+                calendar_service = CalendarService(current_user["user_id"])
+                
+                # Collect user data for context
+                user_data = {
+                    "username": current_user["username"],
+                    "finance": {
+                        "transactions": finance_service.get_transactions(limit=10),
+                        "balance": finance_service.get_balance()
+                    },
+                    "health": {
+                        "metrics": health_service.get_metrics(limit=5),
+                        "exercises": health_service.get_exercises(limit=5)
+                    },
+                    "calendar": {
+                        "events": calendar_service.get_upcoming_events(limit=5),
+                        "tasks": calendar_service.get_pending_tasks(limit=5)
+                    }
+                }
+                
+                # Use the AI chat service to get a response
+                response = ai_chat_service.chat(message, user_data, history)
+                
+                # Send the response to the client
+                self.send_json_response({"response": response})
+                
+            except Exception as e:
+                logger.error(f"Error in chat API: {str(e)}")
+                self.send_json_response({"error": "An error occurred while processing your request"})
+        
+        def handle_api_suggest_activity_post(self, json_data):
+            if ai_chat_service is None:
+                self.send_json_response({"error": "AI Chat Service is not available"})
+                return
+            
+            time_of_day = json_data.get('time_of_day', 'afternoon')
+            energy_level = json_data.get('energy_level', 'medium')
+            available_time = int(json_data.get('available_time', 30))
+            
+            try:
+                # Collect user data for context
+                health_service = HealthService(current_user["user_id"])
+                calendar_service = CalendarService(current_user["user_id"])
+                
+                user_data = {
+                    "username": current_user["username"],
+                    "health": {
+                        "metrics": health_service.get_metrics(limit=1),
+                        "exercises": health_service.get_exercises(limit=5)
+                    },
+                    "calendar": {
+                        "events": calendar_service.get_upcoming_events(limit=3),
+                        "tasks": calendar_service.get_pending_tasks(limit=3)
+                    }
+                }
+                
+                # Use the AI chat service to suggest an activity
+                suggestion = ai_chat_service.suggest_activity(
+                    time_of_day, energy_level, available_time, user_data
+                )
+                
+                # Send the suggestion to the client
+                self.send_json_response(suggestion)
+                
+            except Exception as e:
+                logger.error(f"Error in suggest activity API: {str(e)}")
+                self.send_json_response({"error": "An error occurred while processing your request"})
+        
+        def handle_api_speech_to_text_post(self, json_data):
+            if speech_service is None:
+                self.send_json_response({"error": "Speech-to-Text Service is not available"})
+                return
+            
+            audio_base64 = json_data.get('audio', '')
+            
+            if not audio_base64:
+                self.send_json_response({"error": "Audio data is required"})
+                return
+            
+            try:
+                # Transcribe the audio to text
+                transcription = speech_service.transcribe_audio(audio_base64)
+                
+                # Send the transcription to the client
+                self.send_json_response({"text": transcription})
+                
+            except Exception as e:
+                logger.error(f"Error in speech-to-text API: {str(e)}")
+                self.send_json_response({"error": "An error occurred while processing your request"})
+
+        def send_dashboard_page(self):
+            # To be implemented
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=UTF-8')
+            self.end_headers()
+            
+            html_content = f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>داشبورد</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ecf0f1;
+            direction: rtl;
+            margin: 0;
+            padding: 0;
+        }}
+        .navbar {{
+            background-color: #1e1e1e;
+            padding: 15px;
+            text-align: center;
+        }}
+        .content {{
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }}
+        h1, h2 {{
+            color: #00ffaa;
+        }}
+        a {{
+            color: #ecf0f1;
+            text-decoration: none;
+            margin: 0 10px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>Persian Life Manager</h1>
+        <div>
+            <a href="/dashboard">داشبورد</a>
+            <a href="/finance">مالی</a>
+            <a href="/health">سلامت</a>
+            <a href="/calendar">تقویم</a>
+            <a href="/ai-chat">چت هوشمند</a>
+            <a href="/logout">خروج</a>
+        </div>
+    </div>
+    
+    <div class="content">
+        <h2>داشبورد</h2>
+        <p>خوش آمدید {current_user["username"]}!</p>
+        <p>این صفحه در حال توسعه است...</p>
+    </div>
+</body>
+</html>
+'''
+            self.wfile.write(html_content.encode('utf-8'))
+        
+        def send_finance_page(self):
+            # To be implemented
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=UTF-8')
+            self.end_headers()
+            
+            html_content = f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>مدیریت مالی</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ecf0f1;
+            direction: rtl;
+            margin: 0;
+            padding: 0;
+        }}
+        .navbar {{
+            background-color: #1e1e1e;
+            padding: 15px;
+            text-align: center;
+        }}
+        .content {{
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }}
+        h1, h2 {{
+            color: #00ffaa;
+        }}
+        a {{
+            color: #ecf0f1;
+            text-decoration: none;
+            margin: 0 10px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>Persian Life Manager</h1>
+        <div>
+            <a href="/dashboard">داشبورد</a>
+            <a href="/finance">مالی</a>
+            <a href="/health">سلامت</a>
+            <a href="/calendar">تقویم</a>
+            <a href="/ai-chat">چت هوشمند</a>
+            <a href="/logout">خروج</a>
+        </div>
+    </div>
+    
+    <div class="content">
+        <h2>مدیریت مالی</h2>
+        <p>این صفحه در حال توسعه است...</p>
+    </div>
+</body>
+</html>
+'''
+            self.wfile.write(html_content.encode('utf-8'))
+        
+        def send_health_page(self):
+            # To be implemented
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=UTF-8')
+            self.end_headers()
+            
+            html_content = f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>مدیریت سلامت</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ecf0f1;
+            direction: rtl;
+            margin: 0;
+            padding: 0;
+        }}
+        .navbar {{
+            background-color: #1e1e1e;
+            padding: 15px;
+            text-align: center;
+        }}
+        .content {{
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }}
+        h1, h2 {{
+            color: #00ffaa;
+        }}
+        a {{
+            color: #ecf0f1;
+            text-decoration: none;
+            margin: 0 10px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>Persian Life Manager</h1>
+        <div>
+            <a href="/dashboard">داشبورد</a>
+            <a href="/finance">مالی</a>
+            <a href="/health">سلامت</a>
+            <a href="/calendar">تقویم</a>
+            <a href="/ai-chat">چت هوشمند</a>
+            <a href="/logout">خروج</a>
+        </div>
+    </div>
+    
+    <div class="content">
+        <h2>مدیریت سلامت</h2>
+        <p>این صفحه در حال توسعه است...</p>
+    </div>
 </body>
 </html>
 '''
             self.wfile.write(html_content.encode('utf-8'))
         
         def send_calendar_page(self):
-            if current_user["user_id"] is None:
-                self.send_redirect('/login')
-                return
-                
-            # Get calendar data
-            user_id = current_user["user_id"]
-            calendar_service = CalendarService(user_id, db_path)
-            
-            # Get data
-            events = calendar_service.get_upcoming_events(5)
-            pending_tasks = calendar_service.get_pending_tasks(5)
-            completed_tasks = calendar_service.get_completed_tasks(5)
-            
-            # Format events list
-            events_html = ""
-            if events:
-                for event in events:
-                    time_str = ""
-                    if event.start_time:
-                        time_str = f"{event.start_time}"
-                        if event.end_time:
-                            time_str += f" - {event.end_time}"
-                    else:
-                        time_str = "تمام روز"
-                    
-                    events_html += f'''
-                    <div class="event-item">
-                        <div class="event-title">{event.title}</div>
-                        <div class="event-time">{time_str}</div>
-                        <div class="event-date">{event.date}</div>
-                        {f'<div class="event-location">محل: {event.location}</div>' if event.location else ''}
-                    </div>
-                    '''
-            else:
-                events_html = '<div class="empty-message">هیچ رویداد آینده‌ای وجود ندارد</div>'
-                
-            # Format pending tasks list
-            pending_tasks_html = ""
-            if pending_tasks:
-                for task in pending_tasks:
-                    priority_class = ""
-                    if task.priority == "high":
-                        priority_class = "high-priority"
-                    elif task.priority == "medium":
-                        priority_class = "medium-priority"
-                    else:
-                        priority_class = "low-priority"
-                        
-                    pending_tasks_html += f'''
-                    <div class="task-item {priority_class}">
-                        <div class="task-title">{task.title}</div>
-                        <div class="task-date">موعد: {task.due_date}</div>
-                    </div>
-                    '''
-            else:
-                pending_tasks_html = '<div class="empty-message">هیچ وظیفه در انتظاری وجود ندارد</div>'
-                
-            # Format completed tasks list
-            completed_tasks_html = ""
-            if completed_tasks:
-                for task in completed_tasks:
-                    completed_tasks_html += f'''
-                    <div class="task-item completed">
-                        <div class="task-title">{task.title}</div>
-                        <div class="task-date">تکمیل شده در: {task.completion_date}</div>
-                    </div>
-                    '''
-            else:
-                completed_tasks_html = '<div class="empty-message">هیچ وظیفه تکمیل شده‌ای وجود ندارد</div>'
-                
+            # To be implemented
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=UTF-8')
             self.end_headers()
             
             html_content = f'''
 <!DOCTYPE html>
-<html lang="fa">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>زمان‌بندی | Persian Life Manager</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+    <title>تقویم و مدیریت زمان</title>
     <style>
-        :root {{
-            --main-bg-color: #121212;
-            --card-bg-color: #1e1e1e;
-            --sidebar-bg-color: #171717;
-            --neon-color: #00ffaa;
-            --neon-blue: #00aaff;
-            --neon-pink: #ff0080;
-            --neon-purple: #aa00ff;
-            --neon-glow: 0 0 10px rgba(0, 255, 170, 0.7);
-            --text-color: #ecf0f1;
-            --border-color: #2d2d2d;
-            --input-bg: #1a1a1a;
-        }}
-        
         body {{
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--main-bg-color);
-            color: var(--text-color);
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ecf0f1;
             direction: rtl;
-            line-height: 1.6;
-        }}
-        
-        .app-container {{
-            display: flex;
-            min-height: 100vh;
-        }}
-        
-        .sidebar {{
-            width: 250px;
-            background-color: var(--sidebar-bg-color);
-            padding: 20px 0;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
-        }}
-        
-        .user-profile {{
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 20px;
-        }}
-        
-        .username {{
-            font-size: 18px;
-            font-weight: bold;
-            color: var(--neon-color);
-            margin-bottom: 5px;
-        }}
-        
-        .nav-menu {{
-            list-style: none;
-            padding: 0;
             margin: 0;
-        }}
-        
-        .nav-item {{
             padding: 0;
         }}
-        
-        .nav-link {{
-            display: block;
-            padding: 12px 20px;
-            color: var(--text-color);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            border-right: 3px solid transparent;
+        .navbar {{
+            background-color: #1e1e1e;
+            padding: 15px;
+            text-align: center;
         }}
-        
-        .nav-link:hover {{
-            background-color: rgba(0, 255, 170, 0.1);
-            color: var(--neon-color);
-        }}
-        
-        .nav-link.active {{
-            background-color: rgba(0, 255, 170, 0.2);
-            color: var(--neon-color);
-            border-right-color: var(--neon-color);
-            font-weight: bold;
-        }}
-        
-        .icon {{
-            margin-left: 10px;
-            font-size: 18px;
-        }}
-        
         .content {{
-            flex: 1;
-            padding: 30px;
-        }}
-        
-        .page-title {{
-            font-size: 24px;
-            margin-bottom: 30px;
-            color: var(--neon-color);
-        }}
-        
-        .calendar-container {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-        }}
-        
-        .form-section {{
-            background-color: var(--card-bg-color);
-            border-radius: 10px;
             padding: 20px;
-            border: 1px solid var(--border-color);
+            max-width: 1200px;
+            margin: 0 auto;
         }}
-        
-        .events-section {{
-            background-color: var(--card-bg-color);
-            border-radius: 10px;
-            padding: 20px;
-            border: 1px solid var(--border-color);
+        h1, h2 {{
+            color: #00ffaa;
         }}
-        
-        .tasks-section {{
-            background-color: var(--card-bg-color);
-            border-radius: 10px;
-            padding: 20px;
-            border: 1px solid var(--border-color);
-            grid-column: 1 / -1;
-        }}
-        
-        .section-title {{
-            font-size: 18px;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--neon-color);
-        }}
-        
-        .form-group {{
-            margin-bottom: 15px;
-        }}
-        
-        .form-group label {{
-            display: block;
-            margin-bottom: 8px;
-        }}
-        
-        .form-control {{
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            background-color: var(--input-bg);
-            color: var(--text-color);
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            font-size: 14px;
-            transition: border-color 0.3s ease;
-        }}
-        
-        .form-control:focus {{
-            outline: none;
-            border-color: var(--neon-color);
-        }}
-        
-        .form-check {{
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }}
-        
-        .form-check input {{
-            margin-left: 10px;
-        }}
-        
-        .tab-container {{
-            margin-bottom: 20px;
-        }}
-        
-        .tab-buttons {{
-            display: flex;
-            margin-bottom: 20px;
-        }}
-        
-        .tab-button {{
-            flex: 1;
-            padding: 10px;
-            text-align: center;
-            background-color: var(--input-bg);
-            color: var(--text-color);
-            border: none;
-            cursor: pointer;
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }}
-        
-        .tab-button:first-child {{
-            border-radius: 0 5px 5px 0;
-        }}
-        
-        .tab-button:last-child {{
-            border-radius: 5px 0 0 5px;
-        }}
-        
-        .tab-button.active {{
-            background-color: rgba(0, 255, 170, 0.2);
-            color: var(--neon-color);
-        }}
-        
-        .tab-content {{
-            display: none;
-        }}
-        
-        .tab-content.active {{
-            display: block;
-        }}
-        
-        .event-item {{
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 1px solid var(--neon-color);
-            border-radius: 5px;
-            background-color: rgba(0, 255, 170, 0.05);
-        }}
-        
-        .event-title {{
-            font-weight: bold;
-            font-size: 16px;
-            color: var(--neon-color);
-        }}
-        
-        .event-time {{
-            margin-top: 5px;
-            font-size: 14px;
-        }}
-        
-        .event-date, .event-location {{
-            font-size: 14px;
-            color: rgba(236, 240, 241, 0.7);
-        }}
-        
-        .tasks-container {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }}
-        
-        .tasks-list {{
-            margin-bottom: 20px;
-        }}
-        
-        .tasks-list-title {{
-            font-size: 16px;
-            margin-bottom: 15px;
-            color: var(--neon-blue);
-        }}
-        
-        .task-item {{
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            background-color: var(--input-bg);
-        }}
-        
-        .task-item.high-priority {{
-            border-color: var(--neon-pink);
-            background-color: rgba(255, 0, 128, 0.05);
-        }}
-        
-        .task-item.medium-priority {{
-            border-color: var(--neon-blue);
-            background-color: rgba(0, 170, 255, 0.05);
-        }}
-        
-        .task-item.low-priority {{
-            border-color: var(--neon-purple);
-            background-color: rgba(170, 0, 255, 0.05);
-        }}
-        
-        .task-item.completed {{
-            border-color: var(--neon-color);
-            background-color: rgba(0, 255, 170, 0.05);
-        }}
-        
-        .task-title {{
-            font-weight: bold;
-            font-size: 16px;
-        }}
-        
-        .task-date {{
-            font-size: 14px;
-            color: rgba(236, 240, 241, 0.7);
-            margin-top: 5px;
-        }}
-        
-        .neon-button {{
-            background-color: transparent;
-            color: var(--neon-color);
-            border: 2px solid var(--neon-color);
-            border-radius: 5px;
-            padding: 10px 20px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
-            transition: all 0.3s ease;
-            font-family: 'Vazirmatn', Arial, sans-serif;
-            display: inline-block;
-            margin-top: 15px;
-        }}
-        
-        .neon-button:hover {{
-            background-color: rgba(0, 255, 170, 0.1);
-            box-shadow: 0 0 20px rgba(0, 255, 170, 0.8);
-        }}
-        
-        .neon-button.blue {{
-            color: var(--neon-blue);
-            border-color: var(--neon-blue);
-            box-shadow: 0 0 10px rgba(0, 170, 255, 0.5);
-        }}
-        
-        .neon-button.blue:hover {{
-            background-color: rgba(0, 170, 255, 0.1);
-            box-shadow: 0 0 20px rgba(0, 170, 255, 0.8);
-        }}
-        
-        .logout {{
-            margin-top: auto;
-            padding: 20px;
-            text-align: center;
-            border-top: 1px solid var(--border-color);
-        }}
-        
-        .logout a {{
-            color: var(--text-color);
+        a {{
+            color: #ecf0f1;
             text-decoration: none;
-        }}
-        
-        .logout a:hover {{
-            color: var(--neon-pink);
-        }}
-        
-        .empty-message {{
-            color: rgba(236, 240, 241, 0.5);
-            text-align: center;
-            padding: 20px;
-        }}
-        
-        .time-inputs {{
-            display: flex;
-            gap: 10px;
-        }}
-        
-        .time-inputs .form-control {{
-            flex: 1;
+            margin: 0 10px;
         }}
     </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {{
-            // Tab switching functionality
-            const tabButtons = document.querySelectorAll('.tab-button');
-            const tabContents = document.querySelectorAll('.tab-content');
-            
-            tabButtons.forEach(button => {{
-                button.addEventListener('click', () => {{
-                    // Remove active class from all buttons and contents
-                    tabButtons.forEach(btn => btn.classList.remove('active'));
-                    tabContents.forEach(content => content.classList.remove('active'));
-                    
-                    // Add active class to clicked button and corresponding content
-                    button.classList.add('active');
-                    const tabId = button.getAttribute('data-tab');
-                    document.getElementById(tabId).classList.add('active');
-                }});
-            }});
-            
-            // Toggle all-day event
-            const allDayCheckbox = document.getElementById('all-day');
-            const timeInputsContainer = document.getElementById('time-inputs');
-            
-            if (allDayCheckbox && timeInputsContainer) {{
-                allDayCheckbox.addEventListener('change', function() {{
-                    if (this.checked) {{
-                        timeInputsContainer.style.display = 'none';
-                    }} else {{
-                        timeInputsContainer.style.display = 'flex';
-                    }}
-                }});
-            }}
-        }});
-    </script>
 </head>
 <body>
-    <div class="app-container">
-        <div class="sidebar">
-            <div class="user-profile">
-                <div class="username">{current_user["username"]}</div>
-            </div>
-            
-            <ul class="nav-menu">
-                <li class="nav-item">
-                    <a href="/dashboard" class="nav-link">
-                        <span class="icon">🏠</span>
-                        داشبورد
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/finance" class="nav-link">
-                        <span class="icon">💰</span>
-                        مدیریت مالی
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/health" class="nav-link">
-                        <span class="icon">❤️</span>
-                        سلامتی
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/calendar" class="nav-link active">
-                        <span class="icon">📅</span>
-                        زمان‌بندی
-                    </a>
-                </li>
-            </ul>
-            
-            <div class="logout">
-                <a href="/logout">
-                    <span class="icon">🚪</span>
-                    خروج
-                </a>
-            </div>
+    <div class="navbar">
+        <h1>Persian Life Manager</h1>
+        <div>
+            <a href="/dashboard">داشبورد</a>
+            <a href="/finance">مالی</a>
+            <a href="/health">سلامت</a>
+            <a href="/calendar">تقویم</a>
+            <a href="/ai-chat">چت هوشمند</a>
+            <a href="/logout">خروج</a>
         </div>
-        
-        <div class="content">
-            <h1 class="page-title">مدیریت زمان</h1>
-            
-            <div class="calendar-container">
-                <div class="form-section">
-                    <h2 class="section-title">افزودن رویداد</h2>
-                    
-                    <form action="/add_event" method="post">
-                        <input type="hidden" name="type" value="event">
-                        
-                        <div class="form-group">
-                            <label for="event-title">عنوان رویداد</label>
-                            <input type="text" class="form-control" id="event-title" name="title" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="event-date">تاریخ</label>
-                            <input type="date" class="form-control" id="event-date" name="date" required>
-                        </div>
-                        
-                        <div class="form-check">
-                            <input type="checkbox" id="all-day" name="all_day" value="1">
-                            <label for="all-day">رویداد تمام روز</label>
-                        </div>
-                        
-                        <div class="form-group" id="time-inputs">
-                            <div class="time-inputs">
-                                <div class="form-group">
-                                    <label for="start-time">زمان شروع</label>
-                                    <input type="time" class="form-control" id="start-time" name="start_time">
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="end-time">زمان پایان</label>
-                                    <input type="time" class="form-control" id="end-time" name="end_time">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="event-location">مکان (اختیاری)</label>
-                            <input type="text" class="form-control" id="event-location" name="location">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="event-description">توضیحات (اختیاری)</label>
-                            <textarea class="form-control" id="event-description" name="description" rows="3"></textarea>
-                        </div>
-                        
-                        <div class="form-check">
-                            <input type="checkbox" id="has-reminder" name="has_reminder" value="1">
-                            <label for="has-reminder">یادآوری</label>
-                        </div>
-                        
-                        <button type="submit" class="neon-button">ثبت رویداد</button>
-                    </form>
-                </div>
-                
-                <div class="events-section">
-                    <h2 class="section-title">رویدادهای آینده</h2>
-                    
-                    <div class="events-list">
-                        {events_html}
-                    </div>
-                </div>
-                
-                <div class="form-section">
-                    <h2 class="section-title">افزودن وظیفه</h2>
-                    
-                    <form action="/add_task" method="post">
-                        <input type="hidden" name="type" value="task">
-                        
-                        <div class="form-group">
-                            <label for="task-title">عنوان وظیفه</label>
-                            <input type="text" class="form-control" id="task-title" name="title" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="due-date">تاریخ موعد</label>
-                            <input type="date" class="form-control" id="due-date" name="due_date" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="priority">اولویت</label>
-                            <select class="form-control" id="priority" name="priority">
-                                <option value="low">کم</option>
-                                <option value="medium" selected>متوسط</option>
-                                <option value="high">زیاد</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="task-description">توضیحات (اختیاری)</label>
-                            <textarea class="form-control" id="task-description" name="description" rows="3"></textarea>
-                        </div>
-                        
-                        <div class="form-check">
-                            <input type="checkbox" id="task-reminder" name="has_reminder" value="1">
-                            <label for="task-reminder">یادآوری</label>
-                        </div>
-                        
-                        <button type="submit" class="neon-button blue">ثبت وظیفه</button>
-                    </form>
-                </div>
-                
-                <div class="tasks-section">
-                    <h2 class="section-title">وظایف</h2>
-                    
-                    <div class="tasks-container">
-                        <div class="tasks-list">
-                            <h3 class="tasks-list-title">وظایف در انتظار</h3>
-                            {pending_tasks_html}
-                        </div>
-                        
-                        <div class="tasks-list">
-                            <h3 class="tasks-list-title">وظایف تکمیل شده</h3>
-                            {completed_tasks_html}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    </div>
+    
+    <div class="content">
+        <h2>تقویم و مدیریت زمان</h2>
+        <p>این صفحه در حال توسعه است...</p>
     </div>
 </body>
 </html>
 '''
             self.wfile.write(html_content.encode('utf-8'))
-            
+        
         def send_not_found(self):
             self.send_response(404)
             self.send_header('Content-type', 'text/html; charset=UTF-8')
             self.end_headers()
             
-            # Define HTML content
-            html_content = f'''
+            html_content = '''
 <!DOCTYPE html>
-<html lang="fa">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>صفحه یافت نشد | Persian Life Manager</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+    <title>صفحه یافت نشد</title>
     <style>
-        :root {{
-            --main-bg-color: #121212;
-            --neon-color: #00ffaa;
-            --neon-glow: 0 0 10px rgba(0, 255, 170, 0.7);
-            --text-color: #ecf0f1;
-        }}
-        
-        body {{
-            font-family: 'Vazirmatn', Arial, sans-serif;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ecf0f1;
+            direction: rtl;
             margin: 0;
             padding: 0;
-            background-color: var(--main-bg-color);
-            color: var(--text-color);
-            direction: rtl;
-            line-height: 1.6;
             display: flex;
-            justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            justify-content: center;
+            height: 100vh;
+        }
+        .error-container {
             text-align: center;
-        }}
-        
-        .error-container {{
-            max-width: 600px;
-            padding: 40px;
-        }}
-        
-        .error-code {{
-            font-size: 8rem;
-            font-weight: bold;
-            color: var(--neon-color);
-            text-shadow: var(--neon-glow);
-            margin-bottom: 20px;
-        }}
-        
-        .error-message {{
-            font-size: 2rem;
+            padding: 30px;
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #00ffaa;
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 1.2rem;
             margin-bottom: 30px;
-        }}
-        
-        .error-description {{
-            font-size: 1.2rem;
-            margin-bottom: 40px;
-        }}
-        
-        .back-link {{
+        }
+        a {
             display: inline-block;
-            background-color: transparent;
-            color: var(--neon-color);
-            border: 2px solid var(--neon-color);
-            border-radius: 5px;
             padding: 10px 20px;
-            font-size: 1.2rem;
-            font-weight: bold;
+            background-color: transparent;
+            color: #00ffaa;
+            border: 2px solid #00ffaa;
+            border-radius: 5px;
             text-decoration: none;
-            box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
+            font-weight: bold;
             transition: all 0.3s ease;
-        }}
-        
-        .back-link:hover {{
+        }
+        a:hover {
             background-color: rgba(0, 255, 170, 0.1);
-            box-shadow: 0 0 20px rgba(0, 255, 170, 0.8);
-        }}
+            box-shadow: 0 0 15px rgba(0, 255, 170, 0.5);
+        }
     </style>
 </head>
 <body>
     <div class="error-container">
-        <div class="error-code">404</div>
-        <div class="error-message">صفحه یافت نشد</div>
-        <div class="error-description">متأسفانه صفحه‌ای که به دنبال آن هستید وجود ندارد یا حذف شده است.</div>
-        <a href="/" class="back-link">بازگشت به صفحه اصلی</a>
+        <h1>404</h1>
+        <p>صفحه مورد نظر یافت نشد</p>
+        <a href="/">بازگشت به صفحه اصلی</a>
     </div>
 </body>
 </html>
 '''
             self.wfile.write(html_content.encode('utf-8'))
-            
-        def handle_login(self, form_data):
-            username = form_data.get('username', [''])[0]
-            password = form_data.get('password', [''])[0]
-            
-            if not username or not password:
-                self.send_redirect('/login')
-                return
-            
-            # First try Firebase login
-            try:
-                from app.core.firebase_adapter import FirebaseAdapter
-                firebase_adapter = FirebaseAdapter()
-                
-                if firebase_adapter.enabled:
-                    logger.info(f"Attempting Firebase login for user {username}")
-                    user = firebase_adapter.firebase_login(username, password)
-                    if user:
-                        current_user["user_id"] = user.id
-                        current_user["username"] = user.username
-                        current_user["firebase_uid"] = getattr(user, "firebase_uid", None)
-                        logger.info(f"User {username} logged in via Firebase")
-                        self.send_redirect('/dashboard')
-                        return
-            except ImportError:
-                logger.warning("Firebase adapter not available")
-            except Exception as e:
-                logger.error(f"Error during Firebase login: {str(e)}")
-            
-            # Fallback to SQLite login
-            logger.info(f"Attempting SQLite login for user {username}")
-            user = auth_service.login(username, password)
-            if user:
-                current_user["user_id"] = user.id
-                current_user["username"] = user.username
-                current_user["firebase_uid"] = None
-                self.send_redirect('/dashboard')
-            else:
-                # Auto register if user doesn't exist (for demo purposes)
-                logger.info(f"Auto-registering user {username} for demo")
-                user = auth_service.register(username, password)
-                if user:
-                    current_user["user_id"] = user.id
-                    current_user["username"] = user.username
-                    current_user["firebase_uid"] = None
-                    self.send_redirect('/dashboard')
-                else:
-                    self.send_redirect('/login')
-                
-        def handle_register(self, form_data):
-            username = form_data.get('username', [''])[0]
-            password = form_data.get('password', [''])[0]
-            
-            if not username or not password:
-                self.send_redirect('/login')
-                return
-                
-            if len(password) < 6:
-                self.send_redirect('/login')
-                return
-            
-            # Check if user exists first
-            if auth_service.user_exists(username):
-                self.send_redirect('/login')
-                return
-            
-            # Try Firebase registration
-            try:
-                from app.core.firebase_adapter import FirebaseAdapter
-                firebase_adapter = FirebaseAdapter()
-                
-                if firebase_adapter.enabled:
-                    logger.info(f"Attempting Firebase registration for user {username}")
-                    user = firebase_adapter.firebase_register(username, password)
-                    if user:
-                        current_user["user_id"] = user.id
-                        current_user["username"] = user.username
-                        current_user["firebase_uid"] = getattr(user, "firebase_uid", None)
-                        logger.info(f"User {username} registered via Firebase")
-                        self.send_redirect('/dashboard')
-                        return
-            except ImportError:
-                logger.warning("Firebase adapter not available")
-            except Exception as e:
-                logger.error(f"Error during Firebase registration: {str(e)}")
-            
-            # Fallback to SQLite registration
-            logger.info(f"Attempting SQLite registration for user {username}")
-            user = auth_service.register(username, password)
-            if user:
-                current_user["user_id"] = user.id
-                current_user["username"] = user.username
-                current_user["firebase_uid"] = None
-                self.send_redirect('/dashboard')
-            else:
-                self.send_redirect('/login')
-                
-        def handle_add_transaction(self, form_data):
-            if current_user["user_id"] is None:
-                self.send_redirect('/login')
-                return
-                
-            user_id = current_user["user_id"]
-            finance_service = FinanceService(user_id, db_path)
-            
-            title = form_data.get('title', [''])[0]
-            amount = form_data.get('amount', ['0'])[0]
-            category_id = form_data.get('category_id', [''])[0]
-            date = form_data.get('date', [''])[0]
-            description = form_data.get('description', [''])[0]
-            tx_type = form_data.get('type', ['expense'])[0]
-            
-            try:
-                from app.models.finance import Transaction
-                
-                transaction = Transaction(
-                    id=None,
-                    user_id=user_id,
-                    title=title,
-                    amount=float(amount),
-                    date=date,
-                    type=tx_type,
-                    category_id=int(category_id),
-                    description=description
-                )
-                
-                # Save to SQLite
-                transaction_id = finance_service.add_transaction(transaction)
-                transaction.id = transaction_id
-                
-                # Also save to Firebase if available
-                firebase_uid = current_user.get("firebase_uid")
-                if firebase_uid:
-                    try:
-                        from app.core.firebase_adapter import FirebaseAdapter
-                        firebase_adapter = FirebaseAdapter()
-                        
-                        if firebase_adapter.enabled:
-                            logger.info(f"Adding transaction to Firebase for user {firebase_uid}")
-                            firebase_adapter.add_transaction_to_firebase(transaction, firebase_uid)
-                    except ImportError:
-                        logger.warning("Firebase adapter not available")
-                    except Exception as e:
-                        logger.error(f"Error adding transaction to Firebase: {str(e)}")
-                
-                self.send_redirect('/finance')
-            except Exception as e:
-                logger.error(f"Error adding transaction: {str(e)}")
-                self.send_redirect('/finance')
-                
-        def handle_add_health_metric(self, form_data):
-            if current_user["user_id"] is None:
-                self.send_redirect('/login')
-                return
-                
-            user_id = current_user["user_id"]
-            health_service = HealthService(user_id, db_path)
-            
-            metric_type = form_data.get('type', [''])[0]
-            date = form_data.get('date', [''])[0]
-            
-            try:
-                if metric_type == 'exercise':
-                    from app.models.health import Exercise
-                    
-                    exercise_type = form_data.get('exercise_type', [''])[0]
-                    duration = form_data.get('duration', ['0'])[0]
-                    calories_burned = form_data.get('calories_burned', ['0'])[0]
-                    notes = form_data.get('notes', [''])[0]
-                    
-                    exercise = Exercise(
-                        id=None,
-                        user_id=user_id,
-                        date=date,
-                        exercise_type=exercise_type,
-                        duration=int(duration),
-                        calories_burned=int(calories_burned),
-                        notes=notes
-                    )
-                    
-                    health_service.add_exercise(exercise)
-                
-                elif metric_type == 'metrics':
-                    from app.models.health import HealthMetric
-                    
-                    weight = form_data.get('weight', [''])[0]
-                    systolic = form_data.get('systolic', [''])[0]
-                    diastolic = form_data.get('diastolic', [''])[0]
-                    heart_rate = form_data.get('heart_rate', [''])[0]
-                    sleep_hours = form_data.get('sleep_hours', [''])[0]
-                    
-                    # Convert empty strings to None
-                    weight = float(weight) if weight else None
-                    systolic = int(systolic) if systolic else None
-                    diastolic = int(diastolic) if diastolic else None
-                    heart_rate = int(heart_rate) if heart_rate else None
-                    sleep_hours = float(sleep_hours) if sleep_hours else None
-                    
-                    metrics = HealthMetric(
-                        id=None,
-                        user_id=user_id,
-                        date=date,
-                        weight=weight,
-                        systolic=systolic,
-                        diastolic=diastolic,
-                        heart_rate=heart_rate,
-                        sleep_hours=sleep_hours
-                    )
-                    
-                    health_service.add_metrics(metrics)
-                
-                self.send_redirect('/health')
-            except Exception as e:
-                logger.error(f"Error adding health metric: {str(e)}")
-                self.send_redirect('/health')
-                
-        def handle_add_event(self, form_data):
-            if current_user["user_id"] is None:
-                self.send_redirect('/login')
-                return
-                
-            user_id = current_user["user_id"]
-            calendar_service = CalendarService(user_id, db_path)
-            
-            title = form_data.get('title', [''])[0]
-            date = form_data.get('date', [''])[0]
-            all_day = 'all_day' in form_data
-            start_time = form_data.get('start_time', [''])[0] if not all_day else None
-            end_time = form_data.get('end_time', [''])[0] if not all_day else None
-            location = form_data.get('location', [''])[0]
-            description = form_data.get('description', [''])[0]
-            has_reminder = 'has_reminder' in form_data
-            
-            try:
-                from app.models.calendar import Event
-                
-                event = Event(
-                    id=None,
-                    user_id=user_id,
-                    title=title,
-                    date=date,
-                    start_time=start_time,
-                    end_time=end_time,
-                    location=location,
-                    description=description,
-                    all_day=all_day,
-                    has_reminder=has_reminder
-                )
-                
-                reminder_data = None
-                if has_reminder:
-                    reminder_data = {
-                        'value': 30,  # Default 30 minutes before
-                        'unit': 'minutes'
-                    }
-                
-                calendar_service.add_event(event, reminder_data)
-                self.send_redirect('/calendar')
-            except Exception as e:
-                logger.error(f"Error adding event: {str(e)}")
-                self.send_redirect('/calendar')
-                
-        def handle_add_task(self, form_data):
-            if current_user["user_id"] is None:
-                self.send_redirect('/login')
-                return
-                
-            user_id = current_user["user_id"]
-            calendar_service = CalendarService(user_id, db_path)
-            
-            title = form_data.get('title', [''])[0]
-            due_date = form_data.get('due_date', [''])[0]
-            priority = form_data.get('priority', ['medium'])[0]
-            description = form_data.get('description', [''])[0]
-            has_reminder = 'has_reminder' in form_data
-            
-            try:
-                from app.models.calendar import Task
-                
-                task = Task(
-                    id=None,
-                    user_id=user_id,
-                    title=title,
-                    due_date=due_date,
-                    priority=priority,
-                    description=description,
-                    completed=False,
-                    completion_date=None,
-                    has_reminder=has_reminder
-                )
-                
-                reminder_data = None
-                if has_reminder:
-                    reminder_data = {
-                        'value': 1,  # Default 1 day before
-                        'unit': 'days'
-                    }
-                
-                calendar_service.add_task(task, reminder_data)
-                self.send_redirect('/calendar')
-            except Exception as e:
-                logger.error(f"Error adding task: {str(e)}")
-                self.send_redirect('/calendar')
-                
-        def handle_health_advice(self, form_data):
-            if current_user["user_id"] is None:
-                self.send_json_response({"success": False, "error": "Unauthorized"})
-                return
-                
-            height = form_data.get('height', ['0'])[0]
-            weight = form_data.get('weight', ['0'])[0]
-            activity_level = form_data.get('activity_level', ['moderate'])[0]
-            health_conditions = form_data.get('health_conditions', [''])[0]
-            goal_focus = form_data.get('goal_focus', ['health'])[0]
-            
-            try:
-                height = float(height)
-                weight = float(weight)
-                
-                advice = ai_service.get_health_advice(
-                    height=height,
-                    weight=weight,
-                    activity_level=activity_level,
-                    health_conditions=health_conditions,
-                    goal_focus=goal_focus
-                )
-                
-                self.send_json_response({"success": True, "advice": advice})
-            except Exception as e:
-                logger.error(f"Error getting health advice: {str(e)}")
-                self.send_json_response({"success": False, "error": str(e)})
-                
-        def get_current_persian_date(self):
-            try:
-                from app.utils.date_utils import get_current_persian_date
-                return get_current_persian_date()
-            except ImportError:
-                import jdatetime
-                today = jdatetime.date.today()
-                return f"{today.year}/{today.month}/{today.day}"
-                
-        def format_currency(self, amount):
-            try:
-                from app.utils.persian_utils import format_currency
-                return format_currency(amount)
-            except ImportError:
-                # Simple formatting without the utility function
-                return f"{amount:,.0f}"
     
-    # Start HTTP server on port 5000
-    PORT = 5000
+    # Set up the HTTP server
     handler = PersianLifeManagerHandler
     
-    logger.info(f"Starting Persian Life Manager web preview on port {PORT}")
+    # Try to find an available port
+    port = 5000
     
-    with socketserver.TCPServer(("0.0.0.0", PORT), handler) as httpd:
-        logger.info(f"Server started successfully on port {PORT}")
-        logger.info("Visit the web preview to see Persian Life Manager")
-        httpd.serve_forever()
-
-
-def main():
-    """Main application entry point"""
-    logger.info("Starting Persian Life Manager...")
+    server = socketserver.TCPServer(("0.0.0.0", port), handler)
     
-    if IN_REPLIT:
-        logger.info("Running in Replit environment - starting web preview")
-        run_replit_web_preview()
-    else:
-        logger.info("Running in desktop environment - starting Qt application")
-        run_desktop_app()
+    print(f"Started web server at http://0.0.0.0:{port}")
+    server.serve_forever()
 
 if __name__ == "__main__":
-    main()
+    # Determine which version to run based on environment
+    if IN_REPLIT:
+        print("Running in Replit environment, starting web preview...")
+        run_replit_web_preview()
+    else:
+        print("Running in desktop environment, starting PyQt application...")
+        run_desktop_app()

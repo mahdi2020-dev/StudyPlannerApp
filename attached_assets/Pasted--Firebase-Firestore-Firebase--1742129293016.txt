@@ -1,0 +1,128 @@
+. تنظیم Firebase Firestore
+🔹 اگر هنوز Firebase را به پروژه‌ات اضافه نکردی، این مراحل را انجام بده:
+
+به کنسول Firebase برو → console.firebase.google.com
+یک پروژه‌ی جدید بساز (یا پروژه‌ی موجود را انتخاب کن)
+Firestore Database را فعال کن:
+به Build > Firestore Database برو
+روی Create Database کلیک کن
+حالت Production Mode را انتخاب کن
+منطقه (Region) را انتخاب کن و Enable را بزن
+📌 ۲. نصب پکیج Firebase در پروژه
+🔹 در محیط Replit (یا لوکال)، این دستور را اجرا کن تا Firebase SDK برای پایتون نصب شود:
+
+bash
+Copy
+Edit
+pip install firebase-admin
+📌 ۳. دریافت اطلاعات احراز هویت Firebase
+🔹 برای اتصال به Firebase، نیاز به فایل JSON Service Account داریم:
+
+به Firebase Console برو
+به Project Settings > Service Accounts برو
+روی Generate new private key کلیک کن و فایل JSON را دانلود کن
+این فایل را در پروژه ذخیره کن (نام آن را firebase_config.json بگذار)
+📌 مراقب باش! این فایل را به‌هیچ‌وجه در GitHub آپلود نکن!
+
+📌 ۴. تنظیم اتصال به Firestore
+🔹 یک فایل جدید به نام firebase_db.py بساز و این کد را در آن قرار بده:
+
+python
+Copy
+Edit
+import firebase_admin
+from firebase_admin import credentials, firestore
+
+# اتصال به Firebase با فایل JSON
+cred = credentials.Certificate("firebase_config.json")
+firebase_admin.initialize_app(cred)
+
+# دسترسی به دیتابیس Firestore
+db = firestore.client()
+
+# کلکسیون کاربران
+users_collection = db.collection("users")
+
+def save_user_interaction(user_id, message, response):
+    """ ذخیره پیام و پاسخ در Firebase """
+    user_ref = users_collection.document(user_id)
+    user_data = user_ref.get().to_dict()
+    
+    if user_data:
+        history = user_data.get("history", [])
+    else:
+        history = []
+
+    history.append({"message": message, "response": response})
+
+    user_ref.set({"history": history}, merge=True)
+
+def get_user_history(user_id):
+    """ دریافت تاریخچه‌ی چت کاربر از Firebase """
+    user_ref = users_collection.document(user_id)
+    user_data = user_ref.get().to_dict()
+    
+    if user_data and "history" in user_data:
+        return "\n".join([f"کاربر: {h['message']} | پاسخ: {h['response']}" for h in user_data["history"][-5:]])
+    return "تاریخچه‌ای موجود نیست."
+🔹 این کد چه کاری انجام می‌دهد؟
+✅ save_user_interaction: پیام‌های کاربر و پاسخ‌های AI را در Firebase ذخیره می‌کند.
+✅ get_user_history: آخرین ۵ مکالمه‌ی کاربر را برای ارائه‌ی پیشنهاد بهتر برمی‌گرداند.
+
+📌 ۵. جایگزینی MongoDB با Firebase در main.py
+🔹 در main.py، به‌جای database.py از firebase_db.py استفاده کن:
+
+python
+Copy
+Edit
+from fastapi import FastAPI, Depends, HTTPException
+from pydantic import BaseModel
+import openai
+from firebase_db import save_user_interaction, get_user_history  # تغییر این قسمت
+
+app = FastAPI()
+
+openai.api_key = "YOUR_OPENAI_API_KEY"
+
+class ChatRequest(BaseModel):
+    user_id: str
+    user_input: str
+
+@app.post("/chat")
+async def chat_with_ai(request: ChatRequest):
+    """ پردازش پیام کاربر و ارسال به GPT-4 همراه با تاریخچه‌ی او """
+    
+    user_history = get_user_history(request.user_id)  # دریافت تاریخچه‌ی کاربر از Firebase
+
+    prompt = f"تاریخچه‌ی کاربر:\n{user_history}\n\nکاربر: {request.user_input}\n\nپاسخ مناسب ارائه کن:"
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7
+        )
+        ai_response = response["choices"][0]["message"]["content"]
+
+        # ذخیره تعامل در Firebase
+        save_user_interaction(request.user_id, request.user_input, ai_response)
+
+        return {"response": ai_response}
+    
+    except Exception as e:
+        return {"error": str(e)}
+📌 ۶. اجرای سرور
+✅ سرور را اجرا کن:
+
+bash
+Copy
+Edit
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+✅ تست در Postman یا Curl:
+
+bash
+Copy
+Edit
+curl -X POST "http://localhost:8000/chat" -H "Content-Type: application/json" -d '{"user_id": "user123", "user_input": "برای این هفته چه پیشنهادی داری؟"}'
+📌 حالا اطلاعات در Firebase ذخیره و بازیابی می‌شوند!
+

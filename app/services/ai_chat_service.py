@@ -3,6 +3,8 @@ AI Chat Service for Interactive Conversation with Persian Life Manager
 """
 import os
 import logging
+import json
+from datetime import datetime
 from openai import OpenAI
 
 logger = logging.getLogger(__name__)
@@ -12,12 +14,17 @@ class AIChatService:
     
     def __init__(self):
         """Initialize the AI Chat Service"""
-        self.api_key = os.environ.get("OPENAI_API_KEY")
-        if not self.api_key:
-            logger.warning("OPENAI_API_KEY not found in environment variables")
-        self.client = OpenAI(api_key=self.api_key)
-        logger.info("AI Chat Service initialized")
+        self.openai_api_key = os.environ.get("OPENAI_API_KEY")
+        self.client = None
         
+        if self.openai_api_key:
+            try:
+                self.client = OpenAI(api_key=self.openai_api_key)
+                logger.info("OpenAI client initialized successfully")
+            except Exception as e:
+                logger.error(f"Error initializing OpenAI client: {str(e)}")
+                self.client = None
+    
     def chat(self, user_message, user_data=None, chat_history=None):
         """Chat with the AI using OpenAI
         
@@ -29,40 +36,49 @@ class AIChatService:
         Returns:
             str: AI response in Persian
         """
-        if not self.api_key:
-            return "متأسفانه، در حال حاضر دسترسی به چت هوشمند امکان‌پذیر نیست. لطفاً بعداً تلاش کنید."
-        
-        chat_history = chat_history or []
-        
-        # Create system prompt with user context
-        system_prompt = self._create_system_prompt(user_data)
-        
-        # Format messages
-        messages = [{"role": "system", "content": system_prompt}]
-        
-        # Add chat history
-        for msg in chat_history:
-            messages.append(msg)
-            
-        # Add the current user message
-        messages.append({"role": "user", "content": user_message})
+        if not self.client:
+            return "متأسفانه سرویس هوش مصنوعی در دسترس نیست. لطفاً بعداً دوباره تلاش کنید."
         
         try:
+            # Create messages array starting with system message
+            messages = [
+                {
+                    "role": "system", 
+                    "content": self._create_system_prompt(user_data)
+                }
+            ]
+            
+            # Add chat history if provided
+            if chat_history and isinstance(chat_history, list):
+                # Take last 10 messages to avoid token limits
+                for msg in chat_history[-10:]:
+                    if 'role' in msg and 'content' in msg:
+                        messages.append({
+                            "role": msg["role"],
+                            "content": msg["content"]
+                        })
+            
+            # Add user message
+            messages.append({
+                "role": "user",
+                "content": user_message
+            })
+            
             # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
             # do not change this unless explicitly requested by the user
             response = self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=messages,
                 temperature=0.7,
-                max_tokens=1000
+                max_tokens=800
             )
             
             return response.choices[0].message.content
-        
-        except Exception as e:
-            logger.error(f"Error in AIChatService.chat: {str(e)}")
-            return "متأسفانه خطایی در ارتباط با سرویس هوش مصنوعی رخ داد. لطفاً بعداً تلاش کنید."
             
+        except Exception as e:
+            logger.error(f"Error in chat method: {str(e)}")
+            return f"متأسفانه خطایی رخ داد: {str(e)}"
+    
     def suggest_activity(self, time_of_day, energy_level, available_time, user_data=None):
         """Suggest an activity based on time of day, energy level and available time
         
@@ -75,85 +91,67 @@ class AIChatService:
         Returns:
             dict: Suggested activity with reason
         """
-        if not self.api_key:
+        if not self.client:
             return {
-                "activity": "متأسفانه، در حال حاضر امکان ارائه پیشنهاد وجود ندارد.",
-                "reason": "دسترسی به سرویس هوش مصنوعی امکان‌پذیر نیست."
+                "error": "سرویس هوش مصنوعی در دسترس نیست. لطفاً بعداً دوباره تلاش کنید."
             }
         
-        # Prepare user context
-        context = ""
-        if user_data:
-            if "health" in user_data and "exercises" in user_data["health"]:
-                recent_exercises = user_data["health"]["exercises"]
-                if recent_exercises:
-                    context += "فعالیت‌های اخیر: "
-                    for exercise in recent_exercises:
-                        context += f"{exercise.exercise_type} ({exercise.duration} دقیقه), "
-                    context = context[:-2] + "\\n"
-            
-            if "calendar" in user_data and "events" in user_data["calendar"]:
-                upcoming_events = user_data["calendar"]["events"]
-                if upcoming_events:
-                    context += "رویدادهای آینده: "
-                    for event in upcoming_events:
-                        context += f"{event.title} (تاریخ: {event.date}), "
-                    context = context[:-2] + "\\n"
-                    
-        # Map English time of day to Persian
-        time_of_day_persian = {
-            "morning": "صبح",
-            "afternoon": "بعد از ظهر",
-            "evening": "عصر/شب"
-        }.get(time_of_day, "نامشخص")
-        
-        # Map English energy level to Persian  
-        energy_level_persian = {
-            "low": "کم",
-            "medium": "متوسط",
-            "high": "زیاد"
-        }.get(energy_level, "نامشخص")
-        
-        prompt = f"""لطفاً با توجه به اطلاعات زیر، یک فعالیت مناسب پیشنهاد دهید:
+        try:
+            # Create a prompt for activity suggestion
+            prompt = f"""با توجه به اطلاعات زیر، یک فعالیت مناسب پیشنهاد دهید:
+- زمان روز: {time_of_day}
+- سطح انرژی: {energy_level}
+- زمان در دسترس: {available_time} دقیقه
 
-زمان روز: {time_of_day_persian}
-سطح انرژی: {energy_level_persian}
-زمان در دسترس: {available_time} دقیقه
-
-{context}
-
-لطفاً پیشنهاد خود را به صورت یک فعالیت مشخص در قالب JSON با فرمت زیر ارائه دهید:
+لطفاً پاسخ را در قالب JSON با ساختار زیر ارائه دهید:
 {{
-  "activity": "نام فعالیت",
-  "reason": "دلیل پیشنهاد این فعالیت"
+    "activity": "عنوان فعالیت پیشنهادی",
+    "reason": "دلیل این پیشنهاد"
 }}
 """
-        
-        try:
+            
+            # Add user context if available
+            if user_data:
+                user_context = self._format_user_data(user_data)
+                prompt += f"\n\nاطلاعات بیشتر در مورد کاربر:\n{user_context}"
+            
             # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
             # do not change this unless explicitly requested by the user
             response = self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "شما یک دستیار هوشمند برای مدیریت زندگی هستید."},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system", 
+                        "content": "شما دستیار هوشمند Persian Life Manager هستید که فعالیت‌های مناسب را برای کاربران پیشنهاد می‌دهید."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
                 ],
                 temperature=0.7,
+                max_tokens=400,
                 response_format={"type": "json_object"}
             )
             
-            import json
-            result = json.loads(response.choices[0].message.content)
-            return {
-                "activity": result.get("activity", "فعالیت نامشخص"),
-                "reason": result.get("reason", "دلیلی ارائه نشده است")
-            }
-            
+            try:
+                result = json.loads(response.choices[0].message.content)
+                return {
+                    "activity": result.get("activity", "فعالیت پیشنهادی"),
+                    "reason": result.get("reason", "دلیل نامشخص")
+                }
+            except json.JSONDecodeError:
+                # If JSON parsing fails, return the raw text
+                logger.warning("Failed to parse JSON response from OpenAI")
+                return {
+                    "activity": "پیاده‌روی",
+                    "reason": "متأسفانه نتوانستیم پیشنهاد دقیقی ارائه دهیم. پیاده‌روی یک فعالیت مفید برای اکثر زمان‌ها است."
+                }
+                
         except Exception as e:
-            logger.error(f"Error in AIChatService.suggest_activity: {str(e)}")
+            logger.error(f"Error in suggest_activity method: {str(e)}")
             return {
-                "activity": "متأسفانه، در حال حاضر امکان ارائه پیشنهاد وجود ندارد.",
-                "reason": f"خطا: {str(e)}"
+                "error": f"متأسفانه خطایی رخ داد: {str(e)}"
             }
     
     def analyze_schedule(self, events, tasks, goals=None):
@@ -167,86 +165,90 @@ class AIChatService:
         Returns:
             dict: Schedule analysis and suggestions
         """
-        if not self.api_key:
+        if not self.client:
             return {
-                "analysis": "متأسفانه، در حال حاضر امکان تحلیل برنامه وجود ندارد.",
-                "suggestions": ["دسترسی به سرویس هوش مصنوعی امکان‌پذیر نیست."]
+                "error": "سرویس هوش مصنوعی در دسترس نیست. لطفاً بعداً دوباره تلاش کنید."
             }
         
-        # Format events
-        events_str = ""
-        for event in events:
-            time_info = ""
-            if event.all_day:
-                time_info = "تمام روز"
+        try:
+            # Format the events and tasks for the prompt
+            events_text = "رویدادها:\n"
+            if events:
+                for i, event in enumerate(events):
+                    events_text += f"{i+1}. {event.title} - {event.date}"
+                    if event.start_time:
+                        events_text += f" {event.start_time}"
+                    events_text += "\n"
             else:
-                time_info = f"{event.start_time or ''} - {event.end_time or ''}"
-            events_str += f"• {event.title}: {event.date} {time_info}\\n"
-            if event.description:
-                events_str += f"  توضیحات: {event.description}\\n"
-        
-        # Format tasks
-        tasks_str = ""
-        for task in tasks:
-            priority = {
-                "high": "اولویت بالا",
-                "medium": "اولویت متوسط", 
-                "low": "اولویت پایین"
-            }.get(task.priority, "")
+                events_text += "هیچ رویدادی وجود ندارد.\n"
             
-            status = "انجام شده" if task.completed else "در انتظار"
-            tasks_str += f"• {task.title}: {priority}, {status}, تاریخ: {task.due_date}\\n"
-        
-        # Format goals (if provided)
-        goals_str = ""
-        if goals:
-            for goal in goals:
-                goals_str += f"• {goal.title}\\n"
-        
-        prompt = f"""لطفاً برنامه زمانی زیر را تحلیل کرده و پیشنهادهایی برای بهینه‌سازی آن ارائه دهید.
+            tasks_text = "وظایف:\n"
+            if tasks:
+                for i, task in enumerate(tasks):
+                    completed = "تکمیل شده" if task.completed else "در انتظار"
+                    tasks_text += f"{i+1}. {task.title} - موعد: {task.due_date} - وضعیت: {completed}\n"
+            else:
+                tasks_text += "هیچ وظیفه‌ای وجود ندارد.\n"
+            
+            goals_text = ""
+            if goals:
+                goals_text = "اهداف:\n"
+                for i, goal in enumerate(goals):
+                    goals_text += f"{i+1}. {goal.title}\n"
+            
+            # Create the prompt
+            prompt = f"""لطفاً تقویم زیر را تحلیل کرده و پیشنهادهایی برای بهینه‌سازی برنامه و مدیریت زمان ارائه دهید:
 
-رویدادها:
-{events_str or "هیچ رویدادی موجود نیست"}
+{events_text}
 
-وظایف:
-{tasks_str or "هیچ وظیفه‌ای موجود نیست"}
+{tasks_text}
 
-{'اهداف:\\n' + goals_str if goals_str else ''}
+{goals_text}
 
-لطفاً تحلیل خود را در مورد وضعیت فعلی برنامه و پیشنهادهایی برای بهبود آن در قالب JSON با فرمت زیر ارائه دهید:
+لطفاً تحلیل خود را در قالب JSON با ساختار زیر ارائه دهید:
 {{
-  "analysis": "تحلیل کلی از برنامه",
-  "suggestions": ["پیشنهاد 1", "پیشنهاد 2", "پیشنهاد 3"]
+    "analysis": "تحلیل کلی برنامه",
+    "issues": ["مشکل 1", "مشکل 2", ...],
+    "suggestions": ["پیشنهاد 1", "پیشنهاد 2", ...]
 }}
 """
-        
-        try:
+            
             # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
             # do not change this unless explicitly requested by the user
             response = self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "شما یک متخصص مدیریت زمان و بهره‌وری هستید."},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system", 
+                        "content": "شما یک متخصص مدیریت زمان و بهره‌وری هستید که به کاربران Persian Life Manager کمک می‌کنید."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
                 ],
                 temperature=0.7,
+                max_tokens=800,
                 response_format={"type": "json_object"}
             )
             
-            import json
-            result = json.loads(response.choices[0].message.content)
-            return {
-                "analysis": result.get("analysis", "تحلیلی ارائه نشده است"),
-                "suggestions": result.get("suggestions", ["پیشنهادی ارائه نشده است"])
-            }
-            
+            try:
+                return json.loads(response.choices[0].message.content)
+            except json.JSONDecodeError:
+                # If JSON parsing fails, return the raw text
+                logger.warning("Failed to parse JSON response from OpenAI")
+                return {
+                    "analysis": "تحلیل برنامه شما",
+                    "issues": ["امکان تحلیل دقیق برنامه وجود ندارد"],
+                    "suggestions": ["لطفاً اطلاعات بیشتری وارد کنید تا بتوانیم تحلیل دقیق‌تری ارائه دهیم"]
+                }
+                
         except Exception as e:
-            logger.error(f"Error in AIChatService.analyze_schedule: {str(e)}")
+            logger.error(f"Error in analyze_schedule method: {str(e)}")
             return {
-                "analysis": "متأسفانه، در حال حاضر امکان تحلیل برنامه وجود ندارد.",
-                "suggestions": [f"خطا: {str(e)}"]
+                "error": f"متأسفانه خطایی رخ داد: {str(e)}"
             }
-
+    
     def generate_daily_plan(self, date, user_data=None):
         """Generate a daily plan for the user
         
@@ -257,38 +259,50 @@ class AIChatService:
         Returns:
             str: Daily plan in HTML format
         """
-        if not self.api_key:
-            return "<p>متأسفانه، در حال حاضر امکان ایجاد برنامه روزانه وجود ندارد. لطفاً بعداً تلاش کنید.</p>"
-        
-        # Format user data for context
-        context = self._format_user_data(user_data) if user_data else ""
-        
-        prompt = f"""لطفاً یک برنامه روزانه برای تاریخ {date} با توجه به اطلاعات زیر ایجاد کنید:
-
-{context}
-
-برنامه باید شامل توصیه‌هایی برای فعالیت‌های بدنی، تغذیه، کارهای مهم و زمان استراحت باشد. لطفاً برنامه را به صورت ساعتی و با جزئیات ارائه دهید.
-
-لطفاً پاسخ را به صورت HTML با تگ‌های <h3> برای بخش‌ها و <ul> و <li> برای لیست‌ها ارائه دهید.
-"""
+        if not self.client:
+            return "متأسفانه سرویس هوش مصنوعی در دسترس نیست. لطفاً بعداً دوباره تلاش کنید."
         
         try:
+            # Create a prompt for daily plan generation
+            prompt = f"""لطفاً یک برنامه روزانه کامل برای تاریخ {date} ایجاد کنید که شامل موارد زیر باشد:
+- برنامه صبحگاهی
+- پیشنهادات ورزشی
+- برنامه غذایی (صبحانه، ناهار، شام و میان‌وعده‌ها)
+- زمان‌های کار و استراحت
+- فعالیت‌های عصرگاهی
+- برنامه شبانگاهی و آماده‌سازی برای خواب
+
+لطفاً برنامه را طوری طراحی کنید که بهینه و متعادل باشد و سلامت جسمی و روانی کاربر را در نظر بگیرد.
+"""
+            
+            # Add user context if available
+            if user_data:
+                user_context = self._format_user_data(user_data)
+                prompt += f"\n\nاطلاعات بیشتر در مورد کاربر:\n{user_context}"
+            
             # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
             # do not change this unless explicitly requested by the user
             response = self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "شما یک متخصص برنامه‌ریزی روزانه و مدیریت زمان هستید."},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system", 
+                        "content": "شما دستیار هوشمند Persian Life Manager هستید که برنامه‌های روزانه متعادل و بهینه را برای کاربران طراحی می‌کنید."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
                 ],
-                temperature=0.7
+                temperature=0.7,
+                max_tokens=1000
             )
             
             return response.choices[0].message.content
-            
+                
         except Exception as e:
-            logger.error(f"Error in AIChatService.generate_daily_plan: {str(e)}")
-            return "<p>متأسفانه، در حال حاضر امکان ایجاد برنامه روزانه وجود ندارد. لطفاً بعداً تلاش کنید.</p>"
+            logger.error(f"Error in generate_daily_plan method: {str(e)}")
+            return f"متأسفانه خطایی رخ داد: {str(e)}"
     
     def _create_system_prompt(self, user_data):
         """Create a system prompt with user context
@@ -299,62 +313,28 @@ class AIChatService:
         Returns:
             str: System prompt
         """
-        base_prompt = """شما دستیار هوشمند Persian Life Manager هستید. 
-وظیفه شما پاسخ‌گویی به سوالات کاربر در مورد مدیریت مالی، سلامت و زمان‌بندی است.
-پاسخ‌های خود را به زبان فارسی و با لحنی دوستانه ارائه دهید.
-از اطلاعات زیر برای شخصی‌سازی پاسخ‌های خود استفاده کنید.
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        
+        system_prompt = f"""شما دستیار هوشمند Persian Life Manager هستید که به کاربران در مدیریت زندگی، سلامت، امور مالی و برنامه‌ریزی کمک می‌کنید.
+
+امروز {current_date} است.
+
+دستورالعمل‌های مهم:
+1. همیشه به فارسی پاسخ دهید (مگر اینکه کاربر به زبان دیگری سؤال کند).
+2. پاسخ‌هایتان باید دقیق، مفید و مرتبط با درخواست کاربر باشد.
+3. پاسخ‌های خود را کوتاه و مختصر نگه دارید (حداکثر 3-4 پاراگراف).
+4. همیشه صادق باشید. اگر اطلاعات کافی ندارید، این را اعلام کنید.
+5. محتوای نامناسب، غیراخلاقی یا تبلیغاتی ارائه ندهید.
+6. در مورد مسائل مالی و سلامت احتیاط کنید و تأکید کنید که توصیه‌های شما جایگزین مشاوره تخصصی نیست.
+
 """
         
-        if not user_data:
-            return base_prompt
+        # Add user context if available
+        if user_data:
+            user_context = self._format_user_data(user_data)
+            system_prompt += f"\nاطلاعات کاربر:\n{user_context}\n"
         
-        user_context = "\\n\\nاطلاعات کاربر:\\n"
-        
-        # Add username
-        if "username" in user_data:
-            user_context += f"نام کاربری: {user_data['username']}\\n"
-        
-        # Add financial data
-        if "finances" in user_data and "transactions" in user_data["finances"]:
-            transactions = user_data["finances"]["transactions"]
-            if transactions:
-                user_context += "\\nتراکنش‌های اخیر:\\n"
-                for transaction in transactions[:5]:  # Limit to 5 recent transactions
-                    transaction_type = "هزینه" if transaction.type == "expense" else "درآمد"
-                    user_context += f"- {transaction.title}: {transaction.amount} ({transaction_type})\\n"
-        
-        # Add health data
-        if "health" in user_data:
-            if "metrics" in user_data["health"] and user_data["health"]["metrics"]:
-                metrics = user_data["health"]["metrics"]
-                user_context += "\\nمعیارهای سلامتی اخیر:\\n"
-                for metric in metrics[:3]:  # Limit to 3 recent metrics
-                    if metric.weight:
-                        user_context += f"- وزن: {metric.weight} کیلوگرم\\n"
-                    if metric.systolic and metric.diastolic:
-                        user_context += f"- فشار خون: {metric.systolic}/{metric.diastolic}\\n"
-            
-            if "exercises" in user_data["health"] and user_data["health"]["exercises"]:
-                exercises = user_data["health"]["exercises"]
-                user_context += "\\nفعالیت‌های ورزشی اخیر:\\n"
-                for exercise in exercises[:3]:  # Limit to 3 recent exercises
-                    user_context += f"- {exercise.exercise_type}: {exercise.duration} دقیقه\\n"
-        
-        # Add calendar data
-        if "calendar" in user_data:
-            if "events" in user_data["calendar"] and user_data["calendar"]["events"]:
-                events = user_data["calendar"]["events"]
-                user_context += "\\nرویدادهای آینده:\\n"
-                for event in events[:3]:  # Limit to 3 upcoming events
-                    user_context += f"- {event.title}: {event.date}\\n"
-            
-            if "tasks" in user_data["calendar"] and user_data["calendar"]["tasks"]:
-                tasks = user_data["calendar"]["tasks"]
-                user_context += "\\nوظایف در انتظار:\\n"
-                for task in tasks[:3]:  # Limit to 3 pending tasks
-                    user_context += f"- {task.title}: {task.due_date}\\n"
-        
-        return base_prompt + user_context
+        return system_prompt
     
     def _format_user_data(self, user_data):
         """Format user data for the prompt
@@ -366,51 +346,64 @@ class AIChatService:
             str: Formatted user data
         """
         if not user_data:
-            return ""
-            
-        formatted_data = ""
+            return "اطلاعاتی در مورد کاربر در دسترس نیست."
         
-        # Format financial data
-        if "finances" in user_data and "transactions" in user_data["finances"]:
-            transactions = user_data["finances"]["transactions"]
-            if transactions:
-                formatted_data += "اطلاعات مالی:\\n"
-                income = sum(t.amount for t in transactions if t.type == "income")
-                expenses = sum(t.amount for t in transactions if t.type == "expense")
-                formatted_data += f"مجموع درآمد: {income}\\n"
-                formatted_data += f"مجموع هزینه‌ها: {expenses}\\n"
+        formatted_data = f"نام کاربری: {user_data.get('username', 'نامشخص')}\n\n"
         
-        # Format health data
-        if "health" in user_data:
-            formatted_data += "\\nاطلاعات سلامتی:\\n"
+        # Format finances
+        if 'finances' in user_data and user_data['finances']:
+            finances = user_data['finances']
+            formatted_data += "اطلاعات مالی:\n"
             
-            if "metrics" in user_data["health"] and user_data["health"]["metrics"]:
-                latest_metric = user_data["health"]["metrics"][0]
-                if latest_metric.weight:
-                    formatted_data += f"وزن فعلی: {latest_metric.weight} کیلوگرم\\n"
-                if latest_metric.height:
-                    formatted_data += f"قد: {latest_metric.height} سانتی‌متر\\n"
-                if latest_metric.systolic and latest_metric.diastolic:
-                    formatted_data += f"فشار خون: {latest_metric.systolic}/{latest_metric.diastolic}\\n"
-            
-            if "exercises" in user_data["health"] and user_data["health"]["exercises"]:
-                formatted_data += "فعالیت‌های ورزشی اخیر:\\n"
-                for exercise in user_data["health"]["exercises"][:3]:
-                    formatted_data += f"- {exercise.exercise_type}: {exercise.duration} دقیقه\\n"
+            if 'transactions' in finances and finances['transactions']:
+                transactions = finances['transactions']
+                formatted_data += "تراکنش‌های اخیر:\n"
+                
+                for i, transaction in enumerate(transactions[:5]):  # Show last 5 transactions
+                    type_str = "هزینه" if transaction.type == "expense" else "درآمد"
+                    formatted_data += f"- {transaction.title}: {transaction.amount:,} تومان ({type_str})\n"
         
-        # Format calendar data
-        if "calendar" in user_data:
-            formatted_data += "\\nاطلاعات تقویم:\\n"
+        # Format health
+        if 'health' in user_data and user_data['health']:
+            health = user_data['health']
+            formatted_data += "\nاطلاعات سلامتی:\n"
             
-            if "events" in user_data["calendar"] and user_data["calendar"]["events"]:
-                formatted_data += "رویدادهای امروز و فردا:\\n"
-                for event in user_data["calendar"]["events"][:3]:
-                    formatted_data += f"- {event.title}: {event.date}\\n"
+            if 'metrics' in health and health['metrics']:
+                metrics = health['metrics']
+                if metrics:
+                    latest_metric = metrics[0]  # Assuming they are sorted by date
+                    formatted_data += f"آخرین معیارهای سلامتی (تاریخ: {latest_metric.date}):\n"
+                    
+                    if latest_metric.weight:
+                        formatted_data += f"- وزن: {latest_metric.weight} کیلوگرم\n"
+                    if latest_metric.systolic and latest_metric.diastolic:
+                        formatted_data += f"- فشار خون: {latest_metric.systolic}/{latest_metric.diastolic}\n"
             
-            if "tasks" in user_data["calendar"] and user_data["calendar"]["tasks"]:
-                formatted_data += "وظایف مهم:\\n"
-                for task in user_data["calendar"]["tasks"][:3]:
-                    priority = "اولویت بالا" if task.priority == "high" else "اولویت متوسط" if task.priority == "medium" else "اولویت پایین"
-                    formatted_data += f"- {task.title}: {priority}, تاریخ: {task.due_date}\\n"
+            if 'exercises' in health and health['exercises']:
+                exercises = health['exercises']
+                formatted_data += "تمرینات اخیر:\n"
+                
+                for i, exercise in enumerate(exercises[:3]):  # Show last 3 exercises
+                    formatted_data += f"- {exercise.exercise_type}: {exercise.duration} دقیقه ({exercise.date})\n"
+        
+        # Format calendar
+        if 'calendar' in user_data and user_data['calendar']:
+            calendar = user_data['calendar']
+            formatted_data += "\nاطلاعات تقویم:\n"
+            
+            if 'events' in calendar and calendar['events']:
+                events = calendar['events']
+                formatted_data += "رویدادهای آینده:\n"
+                
+                for i, event in enumerate(events[:3]):  # Show next 3 events
+                    time_str = f" ساعت {event.start_time}" if event.start_time else ""
+                    formatted_data += f"- {event.title}: {event.date}{time_str}\n"
+            
+            if 'tasks' in calendar and calendar['tasks']:
+                tasks = calendar['tasks']
+                formatted_data += "وظایف در انتظار:\n"
+                
+                for i, task in enumerate(tasks[:3]):  # Show 3 pending tasks
+                    formatted_data += f"- {task.title} (موعد: {task.due_date})\n"
         
         return formatted_data

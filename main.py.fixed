@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Persian Financial, Health, and Time Management Application
+Main entry point for the application
+"""
+
+import os
+import sys
+import logging
+from pathlib import Path
+import socket
+import json
+import http.server
+import socketserver
+import urllib.parse
+import base64
+from datetime import datetime, timedelta
+
+# Check if running in Replit environment
+IN_REPLIT = os.environ.get('REPL_ID') is not None
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+def run_desktop_app():
+    """Run the standard PyQt desktop application"""
+    # Import Qt dependencies only when needed
+    from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtCore import QCoreApplication, Qt
+    from PyQt6.QtGui import QFontDatabase, QIcon
