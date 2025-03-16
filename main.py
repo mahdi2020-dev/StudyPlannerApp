@@ -218,6 +218,8 @@ def run_replit_web_preview():
                     self.handle_activate(form_data)
                 elif self.path == '/resend_code':
                     self.handle_resend_code(form_data)
+                elif self.path == '/guest-login':
+                    self.handle_guest_login()
                 elif self.path == '/add_transaction' and current_user["user_id"]:
                     self.handle_add_transaction(form_data)
                 elif self.path == '/add_health_metric' and current_user["user_id"]:
