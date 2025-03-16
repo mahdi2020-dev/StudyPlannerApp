@@ -1244,41 +1244,44 @@ def run_replit_web_preview():
                 
                 # Send verification email
                 verification_link = auth.generate_email_verification_link(email)
-                # TODO: Send verification email using email service
                 
-                self.send_redirect('/login?registered=success&email=' + urllib.parse.quote(email))
+                # Import and use email service
+                try:
+                    from app.services.email_service import EmailService
+                    email_service = EmailService()
+                    email_sent = email_service.send_verification_email(email, name, verification_link)
+                    
+                    if email_sent:
+                        logger.info(f"Verification email sent to {email}")
+                        self.send_redirect('/login?registered=success&email=' + urllib.parse.quote(email))
+                    else:
+                        logger.error(f"Failed to send verification email to {email}")
+                        # Create user anyway but inform about email issue
+                        self.send_redirect('/login?registered=success&email=' + urllib.parse.quote(email) + '&email_error=true')
+                except Exception as e:
+                    logger.error(f"Email service error: {str(e)}")
+                    # Create user anyway but inform about email issue
+                    self.send_redirect('/login?registered=success&email=' + urllib.parse.quote(email) + '&email_error=true')
                 
             except Exception as e:
                 logger.error(f"Registration error: {str(e)}")
                 self.send_redirect('/login?error=unknown')
                 
         def handle_activate(self, form_data):
-            email = form_data.get('email', [''])[0]
-            activation_code = form_data.get('activation_code', [''])[0]
+            """Handle email verification confirmation
             
-            if not email or not activation_code:
-                self.send_redirect('/login?activation_error=incomplete')
-                return
-                
-            try:
-                success, result = auth_service.verify_activation(email, activation_code)
-                
-                if success:
-                    # User is now activated, redirect to login with success message
-                    self.send_redirect('/login?activated=success')
-                else:
-                    # Handle different error cases
-                    if result == "invalid_code":
-                        self.send_redirect(f'/login?activation_error=invalid&email={urllib.parse.quote(email)}')
-                    elif result == "expired_code":
-                        self.send_redirect(f'/login?activation_error=expired&email={urllib.parse.quote(email)}')
-                    else:
-                        self.send_redirect(f'/login?activation_error=error&email={urllib.parse.quote(email)}')
-            except Exception as e:
-                logger.error(f"Activation error: {str(e)}")
-                self.send_redirect(f'/login?activation_error=error&email={urllib.parse.quote(email)}')
+            This function is called when the user confirms their email
+            by clicking the verification link sent to their email.
+            """
+            # Firebase automatically handles email verification
+            # This function is kept for compatibility with the old system
+            # and potential future customization
+            
+            # Just redirect to login page with success message
+            self.send_redirect('/login?verified=success')
                 
         def handle_resend_code(self, form_data):
+            """Handle resending verification email"""
             email = form_data.get('email', [''])[0]
             
             if not email:
@@ -1286,19 +1289,35 @@ def run_replit_web_preview():
                 return
                 
             try:
-                success, result = auth_service.resend_activation_code(email)
+                # Verify if the user exists
+                auth = firebase_admin.auth
+                try:
+                    user = auth.get_user_by_email(email)
+                except:
+                    self.send_redirect('/login?resend_error=not_found')
+                    return
                 
-                if success:
-                    # result contains the new activation code
-                    activation_code = result
-                    self.send_redirect(f'/login?resend=success&email={urllib.parse.quote(email)}&code={activation_code}')
-                else:
-                    if result == "not_found":
-                        self.send_redirect('/login?resend_error=not_found')
+                # Generate and send a new verification link
+                verification_link = auth.generate_email_verification_link(email)
+                
+                # Use the email service to send the verification email
+                try:
+                    from app.services.email_service import EmailService
+                    email_service = EmailService()
+                    email_sent = email_service.send_verification_email(email, user.display_name, verification_link)
+                    
+                    if email_sent:
+                        logger.info(f"Verification email resent to {email}")
+                        self.send_redirect(f'/login?resend=success&email={urllib.parse.quote(email)}')
                     else:
-                        self.send_redirect('/login?resend_error=error')
+                        logger.error(f"Failed to resend verification email to {email}")
+                        self.send_redirect('/login?resend_error=email')
+                except Exception as e:
+                    logger.error(f"Email service error on resend: {str(e)}")
+                    self.send_redirect('/login?resend_error=email')
+                    
             except Exception as e:
-                logger.error(f"Resend code error: {str(e)}")
+                logger.error(f"Resend verification error: {str(e)}")
                 self.send_redirect('/login?resend_error=error')
         
         def handle_api_chat_post(self, json_data):
