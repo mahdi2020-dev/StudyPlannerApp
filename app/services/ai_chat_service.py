@@ -97,7 +97,8 @@ class AIChatService:
             }
         
         try:
-            # Create a prompt for activity suggestion
+            # Create a prompt for activity suggestion based on user habits and patterns
+            # Enhanced with time-blocking principles
             prompt = f"""با توجه به اطلاعات زیر، یک فعالیت مناسب پیشنهاد دهید:
 - زمان روز: {time_of_day}
 - سطح انرژی: {energy_level}

@@ -160,6 +160,8 @@ def run_replit_web_preview():
                 self.send_health_page()
             elif path == '/calendar' and current_user["user_id"]:
                 self.send_calendar_page()
+            elif path == '/religious' and current_user["user_id"]:
+                self.send_religious_page()
             elif path == '/ai-chat' and current_user["user_id"]:
                 self.send_ai_chat_page()
             elif path == '/logout':
