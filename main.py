@@ -765,6 +765,13 @@ def run_replit_web_preview():
             </div>
         </form>
         
+        <!-- Guest Login Button -->
+        <div class="guest-login-container" style="text-align: center; margin-top: 20px;">
+            <button id="guest-login-btn" class="neon-button alt" style="background-color: #333; color: #ccc; border: 1px solid #444;">
+                ورود به عنوان مهمان
+            </button>
+        </div>
+        
         <form action="/register" method="post" id="register-form">
             <div class="form-group">
                 <label class="form-label" for="register-name">نام</label>
@@ -825,6 +832,7 @@ def run_replit_web_preview():
             const switchToRegister = document.getElementById('switch-to-register');
             const switchToLogin = document.getElementById('switch-to-login');
             const resendCodeLink = document.getElementById('resend-code');
+            const guestLoginBtn = document.getElementById('guest-login-btn');
             
             // Switch to register tab/form
             function showRegisterForm() {
@@ -1321,6 +1329,15 @@ def run_replit_web_preview():
             except Exception as e:
                 logger.error(f"Resend verification error: {str(e)}")
                 self.send_redirect('/login?resend_error=error')
+                
+        def handle_guest_login(self):
+            """Handle guest login request"""
+            # Set session for guest user with a special guest ID and username
+            current_user["user_id"] = "guest-user-id"
+            current_user["username"] = "کاربر مهمان"
+            
+            logger.info("Guest user logged in")
+            self.send_redirect('/dashboard')
         
         def handle_api_chat_post(self, json_data):
             if ai_chat_service is None:
