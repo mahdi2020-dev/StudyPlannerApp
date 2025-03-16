@@ -1,11 +1,10 @@
 """
 Speech to Text conversion service for Persian Life Manager
 """
-
-import logging
 import os
-import tempfile
 import base64
+import logging
+import tempfile
 from openai import OpenAI
 
 logger = logging.getLogger(__name__)
@@ -15,8 +14,12 @@ class SpeechToTextService:
     
     def __init__(self):
         """Initialize the service"""
-        self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-    
+        self.api_key = os.environ.get("OPENAI_API_KEY")
+        if not self.api_key:
+            logger.warning("OPENAI_API_KEY not found in environment variables")
+        self.client = OpenAI(api_key=self.api_key)
+        logger.info("Speech-to-Text Service initialized")
+        
     def transcribe_audio(self, audio_base64, language="fa"):
         """Transcribe audio to text using OpenAI Whisper API
         
@@ -27,31 +30,33 @@ class SpeechToTextService:
         Returns:
             str: Transcribed text
         """
+        if not self.api_key:
+            return "متأسفانه، در حال حاضر دسترسی به سرویس تبدیل صدا به متن امکان‌پذیر نیست."
+        
         try:
-            # Decode base64 to binary
+            # Save base64 audio to a temporary file
             audio_data = base64.b64decode(audio_base64)
             
-            # Save to a temporary file
-            with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp_file:
-                tmp_file.write(audio_data)
-                tmp_file_path = tmp_file.name
+            with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as temp_file:
+                temp_file_path = temp_file.name
+                temp_file.write(audio_data)
             
-            # Transcribe using OpenAI
-            with open(tmp_file_path, "rb") as audio_file:
+            # Transcribe using OpenAI Whisper API
+            with open(temp_file_path, "rb") as audio_file:
                 response = self.client.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
                     language=language
                 )
             
-            # Clean up the temporary file
-            os.unlink(tmp_file_path)
+            # Clean up temporary file
+            os.unlink(temp_file_path)
             
             return response.text
             
         except Exception as e:
-            logger.error(f"Error transcribing audio: {str(e)}")
-            return "خطا در تبدیل صدا به متن. لطفاً دوباره تلاش کنید."
+            logger.error(f"Error in transcribe_audio: {str(e)}")
+            return None
     
     def text_to_speech(self, text, voice="alloy"):
         """Convert text to speech using OpenAI TTS API
@@ -63,27 +68,23 @@ class SpeechToTextService:
         Returns:
             str: Base64 encoded audio data
         """
+        if not self.api_key:
+            return None
+        
         try:
+            # Use OpenAI TTS API
             response = self.client.audio.speech.create(
                 model="tts-1",
                 voice=voice,
                 input=text
             )
             
-            # Save to a temporary file
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
-                response.stream_to_file(tmp_file.name)
-                tmp_file_path = tmp_file.name
+            # Get binary audio data
+            audio_data = response.content
             
-            # Read and encode as base64
-            with open(tmp_file_path, "rb") as audio_file:
-                audio_data = audio_file.read()
-            
-            # Clean up the temporary file
-            os.unlink(tmp_file_path)
-            
-            return base64.b64encode(audio_data).decode("utf-8")
+            # Encode as base64
+            return base64.b64encode(audio_data).decode('utf-8')
             
         except Exception as e:
-            logger.error(f"Error converting text to speech: {str(e)}")
+            logger.error(f"Error in text_to_speech: {str(e)}")
             return None
