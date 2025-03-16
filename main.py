@@ -97,12 +97,13 @@ def run_replit_web_preview():
     
     # Initialize Firebase Admin SDK
     try:
-        cred = credentials.Certificate("serviceAccountKey.json")
-        firebase_admin.initialize_app(cred)
-        logger.info("Firebase Admin SDK initialized successfully")
+        if not firebase_admin._apps:  # Check if not already initialized
+            cred = credentials.Certificate("serviceAccountKey.json")
+            firebase_admin.initialize_app(cred)
+            logger.info("Firebase Admin SDK initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize Firebase Admin SDK: {str(e)}")
-        firebase_admin = None
+        return  # Exit if Firebase initialization fails
     
     # Initialize services
     db_path = os.path.join(Path.home(), '.persian_life_manager', 'database.db')
