@@ -18,6 +18,9 @@ import urllib.parse
 import base64
 from datetime import datetime, timedelta
 
+import firebase_admin
+from firebase_admin import auth, credentials
+
 # Check if running in Replit environment
 IN_REPLIT = os.environ.get('REPL_ID') is not None
 
@@ -31,6 +34,15 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# Initialize Firebase Admin SDK
+try:
+    cred = credentials.Certificate("serviceAccountKey.json")
+    firebase_admin.initialize_app(cred)
+    logger.info("Firebase Admin SDK initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize Firebase Admin SDK: {str(e)}")
+    firebase_admin = None
 
 def run_desktop_app():
     """Run the standard PyQt desktop application"""
@@ -82,6 +94,15 @@ def run_replit_web_preview():
     from app.services.health_service import HealthService
     from app.services.calendar_service import CalendarService
     from app.services.ai_service import AIService
+    
+    # Initialize Firebase Admin SDK
+    try:
+        cred = credentials.Certificate("serviceAccountKey.json")
+        firebase_admin.initialize_app(cred)
+        logger.info("Firebase Admin SDK initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize Firebase Admin SDK: {str(e)}")
+        firebase_admin = None
     
     # Initialize services
     db_path = os.path.join(Path.home(), '.persian_life_manager', 'database.db')
@@ -1193,29 +1214,42 @@ def run_replit_web_preview():
                 self.send_redirect('/login?error=unknown')
         
         def handle_register(self, form_data):
+            """Handle registration form submission with Firebase"""
             name = form_data.get('name', [''])[0]
             email = form_data.get('email', [''])[0]
             password = form_data.get('password', [''])[0]
             
             if not name or not email or not password:
-                self.send_redirect('/login?register_error=incomplete')
+                self.send_redirect('/login?error=incomplete')
                 return
             
             try:
-                success, result = auth_service.register_user(email, password, name)
+                auth = firebase_admin.auth
+                # Check if user already exists
+                try:
+                    auth.get_user_by_email(email)
+                    self.send_redirect('/login?error=email-exists')
+                    return
+                except firebase_admin._auth_utils.UserNotFoundError:
+                    pass
                 
-                if success:
-                    # result contains the activation code
-                    activation_code = result
-                    self.send_redirect(f'/login?registered=success&email={urllib.parse.quote(email)}&code={activation_code}')
-                else:
-                    if result == "email_exists":
-                        self.send_redirect('/login?register_error=exists')
-                    else:
-                        self.send_redirect('/login?register_error=error')
+                # Create new user
+                user = auth.create_user(
+                    email=email,
+                    password=password,
+                    display_name=name,
+                    email_verified=False
+                )
+                
+                # Send verification email
+                verification_link = auth.generate_email_verification_link(email)
+                # TODO: Send verification email using email service
+                
+                self.send_redirect('/login?registered=success&email=' + urllib.parse.quote(email))
+                
             except Exception as e:
                 logger.error(f"Registration error: {str(e)}")
-                self.send_redirect('/login?register_error=error')
+                self.send_redirect('/login?error=unknown')
                 
         def handle_activate(self, form_data):
             email = form_data.get('email', [''])[0]
