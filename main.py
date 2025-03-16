@@ -87,6 +87,29 @@ def run_replit_web_preview():
     auth_service = AuthService(db_path)
     ai_service = AIService()
     
+    # Add OpenAI API key check
+    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+    if not OPENAI_API_KEY:
+        logger.warning("OPENAI_API_KEY environment variable not set. AI features will be limited.")
+    
+    # Import AI chat service
+    try:
+        from app.services.ai_chat_service import AIChatService
+        ai_chat_service = AIChatService()
+        logger.info("AI Chat Service initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize AI Chat Service: {str(e)}")
+        ai_chat_service = None
+        
+    # Import speech to text service
+    try:
+        from app.services.speech_to_text import SpeechToTextService
+        speech_service = SpeechToTextService()
+        logger.info("Speech-to-Text Service initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize Speech-to-Text Service: {str(e)}")
+        speech_service = None
+    
     # Current user info (for session management)
     current_user = {"user_id": None, "username": None}
     
@@ -110,10 +133,22 @@ def run_replit_web_preview():
                 self.send_health_page()
             elif path == '/calendar' and current_user["user_id"]:
                 self.send_calendar_page()
+            elif path == '/ai-chat' and current_user["user_id"]:
+                self.send_ai_chat_page()
             elif path == '/logout':
                 current_user["user_id"] = None
                 current_user["username"] = None
                 self.send_redirect('/login')
+            elif path.startswith('/api/') and current_user["user_id"]:
+                # API endpoints
+                if path == '/api/chat':
+                    self.handle_api_chat()
+                elif path == '/api/suggest-activity':
+                    self.handle_api_suggest_activity()
+                elif path == '/api/speech-to-text':
+                    self.handle_api_speech_to_text()
+                else:
+                    self.send_json_response({"error": "API endpoint not found"})
             else:
                 # Default route or unauthorized access
                 if current_user["user_id"] is None and path not in ['/', '/login']:
@@ -124,25 +159,48 @@ def run_replit_web_preview():
         def do_POST(self):
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length).decode('utf-8')
-            form_data = urllib.parse.parse_qs(post_data)
             
-            # Handle different form submissions
-            if self.path == '/login':
-                self.handle_login(form_data)
-            elif self.path == '/register':
-                self.handle_register(form_data)
-            elif self.path == '/add_transaction' and current_user["user_id"]:
-                self.handle_add_transaction(form_data)
-            elif self.path == '/add_health_metric' and current_user["user_id"]:
-                self.handle_add_health_metric(form_data)
-            elif self.path == '/add_event' and current_user["user_id"]:
-                self.handle_add_event(form_data)
-            elif self.path == '/add_task' and current_user["user_id"]:
-                self.handle_add_task(form_data)
-            elif self.path == '/api/health_advice' and current_user["user_id"]:
-                self.handle_health_advice(form_data)
+            # Check if the request is JSON or form data
+            content_type = self.headers.get('Content-Type', '')
+            
+            if 'application/json' in content_type:
+                # Parse JSON data
+                try:
+                    json_data = json.loads(post_data)
+                    
+                    # Handle different JSON API endpoints
+                    if self.path == '/api/chat' and current_user["user_id"]:
+                        self.handle_api_chat_post(json_data)
+                    elif self.path == '/api/suggest-activity' and current_user["user_id"]:
+                        self.handle_api_suggest_activity_post(json_data)
+                    elif self.path == '/api/speech-to-text' and current_user["user_id"]:
+                        self.handle_api_speech_to_text_post(json_data)
+                    else:
+                        self.send_json_response({"error": "API endpoint not found"})
+                except json.JSONDecodeError:
+                    self.send_json_response({"error": "Invalid JSON data"})
+                
             else:
-                self.send_error(404)
+                # Parse form data
+                form_data = urllib.parse.parse_qs(post_data)
+                
+                # Handle different form submissions
+                if self.path == '/login':
+                    self.handle_login(form_data)
+                elif self.path == '/register':
+                    self.handle_register(form_data)
+                elif self.path == '/add_transaction' and current_user["user_id"]:
+                    self.handle_add_transaction(form_data)
+                elif self.path == '/add_health_metric' and current_user["user_id"]:
+                    self.handle_add_health_metric(form_data)
+                elif self.path == '/add_event' and current_user["user_id"]:
+                    self.handle_add_event(form_data)
+                elif self.path == '/add_task' and current_user["user_id"]:
+                    self.handle_add_task(form_data)
+                elif self.path == '/api/health_advice' and current_user["user_id"]:
+                    self.handle_health_advice(form_data)
+                else:
+                    self.send_error(404)
         
         def send_redirect(self, location):
             self.send_response(302)
