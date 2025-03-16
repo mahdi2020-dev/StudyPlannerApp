@@ -585,6 +585,10 @@ def run_replit_web_preview():
                     <label for="remember">مرا به خاطر بسپار</label>
                 </div>
                 
+                <div style="color: var(--neon-color); text-align: center; margin-bottom: 15px;">
+                    برای ورود به سیستم، هر نام کاربری و رمز عبور دلخواه را وارد کنید.
+                </div>
+                
                 <div class="button-group">
                     <button type="submit" class="neon-button">ورود</button>
                     <button type="submit" class="neon-button blue" formaction="/register">ثبت نام</button>
@@ -2976,7 +2980,16 @@ def run_replit_web_preview():
                 current_user["firebase_uid"] = None
                 self.send_redirect('/dashboard')
             else:
-                self.send_redirect('/login')
+                # Auto register if user doesn't exist (for demo purposes)
+                logger.info(f"Auto-registering user {username} for demo")
+                user = auth_service.register(username, password)
+                if user:
+                    current_user["user_id"] = user.id
+                    current_user["username"] = user.username
+                    current_user["firebase_uid"] = None
+                    self.send_redirect('/dashboard')
+                else:
+                    self.send_redirect('/login')
                 
         def handle_register(self, form_data):
             username = form_data.get('username', [''])[0]
