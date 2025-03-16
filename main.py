@@ -150,6 +150,8 @@ def run_replit_web_preview():
                 self.send_home_page()
             elif path == '/login':
                 self.send_login_page()
+            elif path == '/guest-login':
+                self.handle_guest_login()
             elif path == '/dashboard' and current_user["user_id"]:
                 self.send_dashboard_page()
             elif path == '/finance' and current_user["user_id"]:
@@ -434,6 +436,7 @@ def run_replit_web_preview():
             <div class="subtitle">برنامه جامع مدیریت مالی، سلامت و زندگی با پشتیبانی از تقویم شمسی</div>
             <div class="cta-container">
                 <a href="/login" class="neon-button">ورود به برنامه</a>
+                <a href="/guest-login" class="neon-button alt">ورود به عنوان مهمان</a>
             </div>
         </section>
         
@@ -459,6 +462,7 @@ def run_replit_web_preview():
         
         <section class="cta-container">
             <a href="/login" class="neon-button">ورود به برنامه</a>
+            <a href="/guest-login" class="neon-button alt">ورود به عنوان مهمان</a>
         </section>
         
         <footer class="footer">
@@ -891,6 +895,13 @@ def run_replit_web_preview():
             });
             if (resendCodeLink) {
                 resendCodeLink.addEventListener('click', handleResendCode);
+            }
+            
+            // Guest Login button handler
+            if (guestLoginBtn) {
+                guestLoginBtn.addEventListener('click', function() {
+                    window.location.href = '/guest-login';
+                });
             }
             
             // URL parameters handling for error messages
