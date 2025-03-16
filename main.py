@@ -455,18 +455,60 @@ def run_replit_web_preview():
             parsed_url = urllib.parse.urlparse(self.path)
             query_params = urllib.parse.parse_qs(parsed_url.query)
             
+            # Default values
             login_error = ''
             register_error = ''
+            activation_error = ''
+            resend_error = ''
             registration_success = False
+            activation_success = False
+            resend_success = False
+            prefill_email = ''
+            activation_code = ''
+            show_activation_form = False
             
+            # Process query parameters
             if 'login_error' in query_params:
                 login_error = query_params['login_error'][0]
+                if login_error == 'not_activated':
+                    show_activation_form = True
+                    if 'email' in query_params:
+                        prefill_email = query_params['email'][0]
             
             if 'register_error' in query_params:
                 register_error = query_params['register_error'][0]
                 
+            if 'activation_error' in query_params:
+                activation_error = query_params['activation_error'][0]
+                show_activation_form = True
+                if 'email' in query_params:
+                    prefill_email = query_params['email'][0]
+                    
+            if 'resend_error' in query_params:
+                resend_error = query_params['resend_error'][0]
+                show_activation_form = True
+                if 'email' in query_params:
+                    prefill_email = query_params['email'][0]
+            
             if 'registered' in query_params:
                 registration_success = query_params['registered'][0] == 'success'
+                if registration_success:
+                    show_activation_form = True
+                    if 'email' in query_params:
+                        prefill_email = query_params['email'][0]
+                    if 'code' in query_params:
+                        activation_code = query_params['code'][0]
+                        
+            if 'activated' in query_params:
+                activation_success = query_params['activated'][0] == 'success'
+                
+            if 'resend' in query_params:
+                resend_success = query_params['resend'][0] == 'success'
+                show_activation_form = True
+                if 'email' in query_params:
+                    prefill_email = query_params['email'][0]
+                if 'code' in query_params:
+                    activation_code = query_params['code'][0]
             
             # Define HTML content with triple quotes for proper formatting
             html_content = '''
@@ -643,6 +685,7 @@ def run_replit_web_preview():
         <div class="auth-tabs">
             <div class="auth-tab active" id="login-tab">ورود</div>
             <div class="auth-tab" id="register-tab">ثبت نام</div>
+            <div class="auth-tab" id="activate-tab" style="display: none;">فعال‌سازی</div>
         </div>
         
         <form action="/login" method="post" id="login-form">
@@ -687,36 +730,91 @@ def run_replit_web_preview():
                 حساب کاربری دارید؟ <a href="#" id="switch-to-login">وارد شوید</a>
             </div>
         </form>
+        
+        <form action="/activate" method="post" id="activate-form" style="display: none;">
+            <div class="form-group">
+                <label class="form-label" for="activate-email">ایمیل</label>
+                <input type="email" class="form-input" id="activate-email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="activate-code">کد فعال‌سازی</label>
+                <input type="text" class="form-input" id="activate-code" name="activation_code" required maxlength="6" placeholder="کد ۶ رقمی ارسال شده به ایمیل شما">
+                <div class="error-message" id="activate-error"></div>
+            </div>
+            
+            <button type="submit" class="neon-button">فعال‌سازی حساب کاربری</button>
+            
+            <div class="form-footer">
+                کد فعال‌سازی را دریافت نکرده‌اید؟ <a href="#" id="resend-code">ارسال مجدد کد</a>
+            </div>
+        </form>
+        
+        <form action="/resend_code" method="post" id="resend-form" style="display: none;">
+            <input type="hidden" id="resend-email" name="email">
+        </form>
     </div>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const loginTab = document.getElementById('login-tab');
             const registerTab = document.getElementById('register-tab');
+            const activateTab = document.getElementById('activate-tab');
             const loginForm = document.getElementById('login-form');
             const registerForm = document.getElementById('register-form');
+            const activateForm = document.getElementById('activate-form');
+            const resendForm = document.getElementById('resend-form');
             const switchToRegister = document.getElementById('switch-to-register');
             const switchToLogin = document.getElementById('switch-to-login');
+            const resendCodeLink = document.getElementById('resend-code');
             
             // Switch to register tab/form
             function showRegisterForm() {
                 loginTab.classList.remove('active');
                 registerTab.classList.add('active');
+                activateTab.classList.remove('active');
                 loginForm.style.display = 'none';
                 registerForm.style.display = 'block';
+                activateForm.style.display = 'none';
             }
             
             // Switch to login tab/form
             function showLoginForm() {
                 registerTab.classList.remove('active');
                 loginTab.classList.add('active');
+                activateTab.classList.remove('active');
                 registerForm.style.display = 'none';
                 loginForm.style.display = 'block';
+                activateForm.style.display = 'none';
+            }
+            
+            // Switch to activate tab/form
+            function showActivateForm() {
+                loginTab.classList.remove('active');
+                registerTab.classList.remove('active');
+                activateTab.classList.add('active');
+                activateTab.style.display = 'block';
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'none';
+                activateForm.style.display = 'block';
+            }
+            
+            // Event to handle resend code click
+            function handleResendCode(e) {
+                e.preventDefault();
+                const email = document.getElementById('activate-email').value;
+                if (email) {
+                    document.getElementById('resend-email').value = email;
+                    resendForm.submit();
+                } else {
+                    alert('لطفاً ایمیل خود را وارد کنید.');
+                }
             }
             
             // Event listeners
             registerTab.addEventListener('click', showRegisterForm);
             loginTab.addEventListener('click', showLoginForm);
+            activateTab.addEventListener('click', showActivateForm);
             switchToRegister.addEventListener('click', function(e) {
                 e.preventDefault();
                 showRegisterForm();
@@ -725,29 +823,110 @@ def run_replit_web_preview():
                 e.preventDefault();
                 showLoginForm();
             });
+            if (resendCodeLink) {
+                resendCodeLink.addEventListener('click', handleResendCode);
+            }
             
             // URL parameters handling for error messages
             const urlParams = new URLSearchParams(window.location.search);
             const loginError = urlParams.get('login_error');
             const registerError = urlParams.get('register_error');
+            const activationError = urlParams.get('activation_error');
+            const resendError = urlParams.get('resend_error');
             const registered = urlParams.get('registered');
+            const activated = urlParams.get('activated');
+            const resendSuccess = urlParams.get('resend');
+            const email = urlParams.get('email');
+            const code = urlParams.get('code');
             
-            if (loginError) {
-                const errorElem = document.getElementById('login-error');
-                errorElem.textContent = loginError;
-                errorElem.style.display = 'block';
+            // Check if we need to show the activation form
+            if (loginError === 'not_activated' || activationError || resendError || 
+                registered === 'success' || resendSuccess === 'success') {
+                showActivateForm();
+                
+                // Prefill the email field if provided
+                if (email) {
+                    document.getElementById('activate-email').value = email;
+                }
+                
+                // Prefill the activation code if provided
+                if (code) {
+                    document.getElementById('activate-code').value = code;
+                }
+                
+                // Show appropriate error messages
+                if (activationError) {
+                    const errorElem = document.getElementById('activate-error');
+                    if (activationError === 'invalid') {
+                        errorElem.textContent = 'کد فعال‌سازی نامعتبر است.';
+                    } else if (activationError === 'expired') {
+                        errorElem.textContent = 'کد فعال‌سازی منقضی شده است. لطفاً درخواست کد جدید کنید.';
+                    } else if (activationError === 'incomplete') {
+                        errorElem.textContent = 'لطفاً ایمیل و کد فعال‌سازی را وارد کنید.';
+                    } else {
+                        errorElem.textContent = 'خطا در فعال‌سازی حساب کاربری.';
+                    }
+                    errorElem.style.display = 'block';
+                }
+                
+                if (resendError) {
+                    const errorElem = document.getElementById('activate-error');
+                    errorElem.textContent = 'خطا در ارسال مجدد کد فعال‌سازی. لطفاً دوباره تلاش کنید.';
+                    errorElem.style.display = 'block';
+                }
+                
+                if (resendSuccess === 'success') {
+                    const errorElem = document.getElementById('activate-error');
+                    errorElem.textContent = 'کد فعال‌سازی جدید ارسال شد.';
+                    errorElem.style.display = 'block';
+                    errorElem.style.color = '#00ffaa';
+                }
+                
+                if (registered === 'success') {
+                    const errorElem = document.getElementById('activate-error');
+                    errorElem.textContent = 'ثبت نام با موفقیت انجام شد. لطفاً حساب کاربری خود را با کد ارسال شده به ایمیل‌تان فعال کنید.';
+                    errorElem.style.display = 'block';
+                    errorElem.style.color = '#00ffaa';
+                }
+                
+                if (loginError === 'not_activated') {
+                    const errorElem = document.getElementById('activate-error');
+                    errorElem.textContent = 'حساب کاربری شما هنوز فعال نشده است. لطفاً با استفاده از کد ارسال شده به ایمیل‌تان، آن را فعال کنید.';
+                    errorElem.style.display = 'block';
+                }
+            } else {
+                // Handle standard login/register errors
+                if (loginError) {
+                    const errorElem = document.getElementById('login-error');
+                    if (loginError === 'invalid') {
+                        errorElem.textContent = 'ایمیل یا رمز عبور اشتباه است.';
+                    } else if (loginError === 'inactive') {
+                        errorElem.textContent = 'حساب کاربری غیرفعال است.';
+                    } else if (loginError === 'incomplete') {
+                        errorElem.textContent = 'لطفاً ایمیل و رمز عبور را وارد کنید.';
+                    } else {
+                        errorElem.textContent = 'خطا در ورود. لطفاً دوباره تلاش کنید.';
+                    }
+                    errorElem.style.display = 'block';
+                }
+                
+                if (registerError) {
+                    showRegisterForm();
+                    const errorElem = document.getElementById('register-error');
+                    if (registerError === 'exists') {
+                        errorElem.textContent = 'این ایمیل قبلاً ثبت شده است.';
+                    } else if (registerError === 'incomplete') {
+                        errorElem.textContent = 'لطفاً تمام فیلدها را پر کنید.';
+                    } else {
+                        errorElem.textContent = 'خطا در ثبت نام. لطفاً دوباره تلاش کنید.';
+                    }
+                    errorElem.style.display = 'block';
+                }
             }
             
-            if (registerError) {
-                showRegisterForm();
-                const errorElem = document.getElementById('register-error');
-                errorElem.textContent = registerError;
-                errorElem.style.display = 'block';
-            }
-            
-            if (registered === 'success') {
+            if (activated === 'success') {
                 const errorElem = document.getElementById('login-error');
-                errorElem.textContent = 'ثبت نام با موفقیت انجام شد. اکنون می‌توانید وارد شوید.';
+                errorElem.textContent = 'حساب کاربری شما با موفقیت فعال شد. اکنون می‌توانید وارد شوید.';
                 errorElem.style.display = 'block';
                 errorElem.style.color = '#00ffaa';
             }
@@ -1020,14 +1199,14 @@ def run_replit_web_preview():
                 else:
                     # Handle different error cases
                     if result == "invalid_code":
-                        self.send_redirect('/login?activation_error=invalid&email=' + urllib.parse.quote(email))
-                    elif result == "code_expired":
-                        self.send_redirect('/login?activation_error=expired&email=' + urllib.parse.quote(email))
+                        self.send_redirect(f'/login?activation_error=invalid&email={urllib.parse.quote(email)}')
+                    elif result == "expired_code":
+                        self.send_redirect(f'/login?activation_error=expired&email={urllib.parse.quote(email)}')
                     else:
-                        self.send_redirect('/login?activation_error=error')
+                        self.send_redirect(f'/login?activation_error=error&email={urllib.parse.quote(email)}')
             except Exception as e:
                 logger.error(f"Activation error: {str(e)}")
-                self.send_redirect('/login?activation_error=error')
+                self.send_redirect(f'/login?activation_error=error&email={urllib.parse.quote(email)}')
                 
         def handle_resend_code(self, form_data):
             email = form_data.get('email', [''])[0]
