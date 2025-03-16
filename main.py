@@ -451,64 +451,29 @@ def run_replit_web_preview():
             self.send_header('Content-type', 'text/html; charset=UTF-8')
             self.end_headers()
             
-            # Get error params from query string
+            # Get Firebase configuration from environment variables
+            firebase_api_key = os.environ.get('FIREBASE_API_KEY')
+            firebase_project_id = os.environ.get('FIREBASE_PROJECT_ID')
+            firebase_app_id = os.environ.get('FIREBASE_APP_ID')
+            
+            # Default values for template variables
+            login_error = ''
+            register_error = ''
+            show_error = ''
+            
+            # Parse URL parameters
             parsed_url = urllib.parse.urlparse(self.path)
             query_params = urllib.parse.parse_qs(parsed_url.query)
             
-            # Default values
-            login_error = ''
-            register_error = ''
-            activation_error = ''
-            resend_error = ''
-            registration_success = False
-            activation_success = False
-            resend_success = False
-            prefill_email = ''
-            activation_code = ''
-            show_activation_form = False
-            
-            # Process query parameters
-            if 'login_error' in query_params:
-                login_error = query_params['login_error'][0]
-                if login_error == 'not_activated':
-                    show_activation_form = True
-                    if 'email' in query_params:
-                        prefill_email = query_params['email'][0]
-            
-            if 'register_error' in query_params:
-                register_error = query_params['register_error'][0]
-                
-            if 'activation_error' in query_params:
-                activation_error = query_params['activation_error'][0]
-                show_activation_form = True
-                if 'email' in query_params:
-                    prefill_email = query_params['email'][0]
-                    
-            if 'resend_error' in query_params:
-                resend_error = query_params['resend_error'][0]
-                show_activation_form = True
-                if 'email' in query_params:
-                    prefill_email = query_params['email'][0]
-            
-            if 'registered' in query_params:
-                registration_success = query_params['registered'][0] == 'success'
-                if registration_success:
-                    show_activation_form = True
-                    if 'email' in query_params:
-                        prefill_email = query_params['email'][0]
-                    if 'code' in query_params:
-                        activation_code = query_params['code'][0]
-                        
-            if 'activated' in query_params:
-                activation_success = query_params['activated'][0] == 'success'
-                
-            if 'resend' in query_params:
-                resend_success = query_params['resend'][0] == 'success'
-                show_activation_form = True
-                if 'email' in query_params:
-                    prefill_email = query_params['email'][0]
-                if 'code' in query_params:
-                    activation_code = query_params['code'][0]
+            # Process error messages
+            if 'error' in query_params:
+                error_code = query_params['error'][0]
+                if error_code == 'email-not-verified':
+                    show_error = 'لطفاً ابتدا ایمیل خود را تایید کنید.'
+                elif error_code == 'auth/invalid-credentials':
+                    show_error = 'نام کاربری یا رمز عبور اشتباه است.'
+                else:
+                    show_error = 'خطا در ورود. لطفاً دوباره تلاش کنید.'
             
             # Define HTML content with triple quotes for proper formatting
             html_content = '''
@@ -519,6 +484,75 @@ def run_replit_web_preview():
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ورود | Persian Life Manager</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification }
+            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+            
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "''' + firebase_api_key + '''",
+            authDomain: "''' + firebase_project_id + '''.firebaseapp.com",
+            projectId: "''' + firebase_project_id + '''",
+            storageBucket: "''' + firebase_project_id + '''.firebasestorage.app",
+            messagingSenderId: "528189971792",
+            appId: "''' + firebase_app_id + '''"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        
+        // Login functionality
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorElement = document.getElementById('login-error');
+            
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                if (!userCredential.user.emailVerified) {
+                    errorElement.textContent = 'لطفاً ابتدا ایمیل خود را تایید کنید.';
+                    errorElement.style.display = 'block';
+                    return;
+                }
+                window.location.href = '/dashboard';
+            } catch (error) {
+                errorElement.textContent = 'نام کاربری یا رمز عبور اشتباه است.';
+                errorElement.style.display = 'block';
+            }
+        });
+
+        // Registration functionality
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const name = document.getElementById('register-name').value;
+            const errorElement = document.getElementById('register-error');
+            
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await userCredential.user.updateProfile({
+                    displayName: name
+                });
+                await sendEmailVerification(userCredential.user);
+                errorElement.textContent = 'ثبت نام با موفقیت انجام شد. لطفاً ایمیل خود را تایید کنید.';
+                errorElement.style.display = 'block';
+                errorElement.style.color = '#00ffaa';
+            } catch (error) {
+                if (error.code === 'auth/email-already-in-use') {
+                    errorElement.textContent = 'این ایمیل قبلاً ثبت شده است.';
+                } else {
+                    errorElement.textContent = 'خطا در ثبت نام. لطفاً دوباره تلاش کنید.';
+                }
+                errorElement.style.display = 'block';
+            }
+        });
+    </script>
     <style>
         :root {
             --main-bg-color: #121212;
@@ -1128,34 +1162,35 @@ def run_replit_web_preview():
             self.wfile.write(html_content.encode('utf-8'))
 
         def handle_login(self, form_data):
+            """Handle login form submission with Firebase"""
+            # Get credentials from form data
             email = form_data.get('email', [''])[0]
             password = form_data.get('password', [''])[0]
             
             if not email or not password:
-                self.send_redirect('/login?login_error=incomplete')
+                self.send_redirect('/login?error=incomplete')
                 return
-            
-            try:
-                success, result = auth_service.login_user(email, password)
                 
-                if success:
-                    # Set user info in the session
-                    current_user["user_id"] = result
-                    current_user["username"] = email.split('@')[0]  # Simple username extraction
-                    
-                    # Redirect to dashboard
-                    self.send_redirect('/dashboard')
-                else:
-                    # Handle different error cases
-                    if result == "not_activated":
-                        self.send_redirect('/login?login_error=not_activated&email=' + urllib.parse.quote(email))
-                    elif result == "account_inactive":
-                        self.send_redirect('/login?login_error=inactive')
-                    else:
-                        self.send_redirect('/login?login_error=invalid')
+            try:
+                auth = firebase_admin.auth
+                user = auth.get_user_by_email(email)
+                
+                if not user.email_verified:
+                    self.send_redirect('/login?error=email-not-verified')
+                    return
+                
+                # User is verified, set session
+                current_user["user_id"] = user.uid
+                current_user["username"] = user.display_name or email.split('@')[0]
+                
+                # Redirect to dashboard
+                self.send_redirect('/dashboard')
+                
+            except firebase_admin._auth_utils.UserNotFoundError:
+                self.send_redirect('/login?error=auth/invalid-credentials')
             except Exception as e:
                 logger.error(f"Login error: {str(e)}")
-                self.send_redirect('/login?login_error=error')
+                self.send_redirect('/login?error=unknown')
         
         def handle_register(self, form_data):
             name = form_data.get('name', [''])[0]
