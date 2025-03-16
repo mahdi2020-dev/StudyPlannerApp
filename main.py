@@ -61,7 +61,6 @@ def run_desktop_app():
     db_path = os.path.join(Path.home(), '.persian_life_manager', 'database.db')
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     db_manager = DatabaseManager(db_path)
-    db_manager.initialize_database()
     
     # Show the login window
     login_window = LoginWindow()
@@ -87,8 +86,6 @@ def run_replit_web_preview():
     # Initialize services
     db_path = os.path.join(Path.home(), '.persian_life_manager', 'database.db')
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    db_manager = DatabaseManager(db_path)
-    db_manager.initialize_database()
     
     auth_service = AuthService(db_path)
     ai_service = AIService()
@@ -210,6 +207,28 @@ def run_replit_web_preview():
         
         def send_redirect(self, location):
             self.send_response(302)
+            # URL encode all non-ASCII characters for proper handling
+            import urllib.parse
+            if not isinstance(location, str):
+                location = str(location)
+            # Ensure location is properly encoded for HTTP header
+            # First, parse the URL to separate any query parameters
+            url_parts = urllib.parse.urlparse(location)
+            # Encode the path part
+            path = url_parts.path
+            # Encode the query part (if any)
+            query = url_parts.query
+            if query:
+                # Parse the query string into a dictionary
+                query_dict = urllib.parse.parse_qs(query)
+                # Create a new query string with properly encoded values
+                new_query = urllib.parse.urlencode(query_dict, doseq=True)
+                # Reassemble the URL with the encoded components
+                location = urllib.parse.urlunparse((
+                    url_parts.scheme, url_parts.netloc, path,
+                    url_parts.params, new_query, url_parts.fragment
+                ))
+            
             self.send_header('Location', location)
             self.end_headers()
         
@@ -427,6 +446,23 @@ def run_replit_web_preview():
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=UTF-8')
             self.end_headers()
+            
+            # Get error params from query string
+            parsed_url = urllib.parse.urlparse(self.path)
+            query_params = urllib.parse.parse_qs(parsed_url.query)
+            
+            login_error = ''
+            register_error = ''
+            registration_success = False
+            
+            if 'login_error' in query_params:
+                login_error = query_params['login_error'][0]
+            
+            if 'register_error' in query_params:
+                register_error = query_params['register_error'][0]
+                
+            if 'registered' in query_params:
+                registration_success = query_params['registered'][0] == 'success'
             
             # Define HTML content with triple quotes for proper formatting
             html_content = '''
@@ -913,20 +949,24 @@ def run_replit_web_preview():
             password = form_data.get('password', [''])[0]
             
             if not email or not password:
-                self.send_redirect('/login?login_error=لطفا تمام فیلدها را تکمیل کنید')
+                self.send_redirect('/login?login_error=invalid')
                 return
             
-            success, user_id = auth_service.login_user(email, password)
-            
-            if success:
-                # Set user info in the session
-                current_user["user_id"] = user_id
-                current_user["username"] = email.split('@')[0]  # Simple username extraction
+            try:
+                success, user_id = auth_service.login_user(email, password)
                 
-                # Redirect to dashboard
-                self.send_redirect('/dashboard')
-            else:
-                self.send_redirect('/login?login_error=ایمیل یا رمز عبور نادرست است')
+                if success:
+                    # Set user info in the session
+                    current_user["user_id"] = user_id
+                    current_user["username"] = email.split('@')[0]  # Simple username extraction
+                    
+                    # Redirect to dashboard
+                    self.send_redirect('/dashboard')
+                else:
+                    self.send_redirect('/login?login_error=invalid')
+            except Exception as e:
+                logger.error(f"Login error: {str(e)}")
+                self.send_redirect('/login?login_error=error')
         
         def handle_register(self, form_data):
             name = form_data.get('name', [''])[0]
@@ -934,15 +974,19 @@ def run_replit_web_preview():
             password = form_data.get('password', [''])[0]
             
             if not name or not email or not password:
-                self.send_redirect('/login?register_error=لطفا تمام فیلدها را تکمیل کنید')
+                self.send_redirect('/login?register_error=incomplete')
                 return
             
-            success, user_id_or_error = auth_service.register_user(email, password, name)
-            
-            if success:
-                self.send_redirect('/login?registered=success')
-            else:
-                self.send_redirect(f'/login?register_error={user_id_or_error}')
+            try:
+                success, user_id_or_error = auth_service.register_user(email, password, name)
+                
+                if success:
+                    self.send_redirect('/login?registered=success')
+                else:
+                    self.send_redirect('/login?register_error=exists')
+            except Exception as e:
+                logger.error(f"Registration error: {str(e)}")
+                self.send_redirect('/login?register_error=error')
         
         def handle_api_chat_post(self, json_data):
             if ai_chat_service is None:
@@ -1375,9 +1419,25 @@ def run_replit_web_preview():
     
     # Try to find an available port
     port = 5000
+    max_attempts = 10
+    attempt = 0
     
-    server = socketserver.TCPServer(("0.0.0.0", port), handler)
+    while attempt < max_attempts:
+        try:
+            server = socketserver.TCPServer(("0.0.0.0", port), handler)
+            break
+        except OSError as e:
+            if e.errno == 98:  # Address already in use
+                logger.warning(f"Port {port} is already in use, trying next port")
+                port += 1
+                attempt += 1
+            else:
+                raise
     
+    if attempt >= max_attempts:
+        logger.error(f"Failed to find an available port after {max_attempts} attempts")
+        raise RuntimeError(f"Failed to find an available port after {max_attempts} attempts")
+        
     print(f"Started web server at http://0.0.0.0:{port}")
     server.serve_forever()
 

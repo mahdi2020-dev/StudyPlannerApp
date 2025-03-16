@@ -425,6 +425,47 @@ class FinanceService:
             logger.error(f"Error getting filtered transactions: {str(e)}")
             return []
     
+    def get_balance(self):
+        """Get the current balance (income - expenses)
+        
+        Returns:
+            dict: Dictionary with total_income, total_expenses, and balance
+        """
+        try:
+            # Get total income
+            query = """
+                SELECT SUM(amount) as total
+                FROM finance_transactions
+                WHERE user_id = ? AND type = 'income'
+            """
+            income_result = self.db_manager.execute_query(query, (self.user_id,))
+            total_income = income_result[0]['total'] if income_result[0]['total'] else 0
+            
+            # Get total expenses
+            query = """
+                SELECT SUM(amount) as total
+                FROM finance_transactions
+                WHERE user_id = ? AND type = 'expense'
+            """
+            expense_result = self.db_manager.execute_query(query, (self.user_id,))
+            total_expenses = expense_result[0]['total'] if expense_result[0]['total'] else 0
+            
+            # Calculate balance
+            balance = total_income - total_expenses
+            
+            return {
+                'total_income': total_income,
+                'total_expenses': total_expenses,
+                'balance': balance
+            }
+        except Exception as e:
+            logger.error(f"Error getting balance: {str(e)}")
+            return {
+                'total_income': 0,
+                'total_expenses': 0,
+                'balance': 0
+            }
+    
     def get_monthly_summary(self):
         """Get summary of income and expenses for the current month
         

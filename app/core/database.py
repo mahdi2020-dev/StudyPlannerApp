@@ -2,335 +2,393 @@
 # -*- coding: utf-8 -*-
 
 """
-Database management for Persian Life Manager Application
+Database utilities for Persian Life Manager Application
 """
 
 import os
 import sqlite3
 import logging
-from datetime import datetime
+import time
+from typing import List, Dict, Any, Union, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 class DatabaseManager:
-    """Manage SQLite database connections and operations"""
+    """SQLite database manager for Persian Life Manager"""
     
-    def __init__(self, db_path):
+    def __init__(self, db_path: str):
         """Initialize the database manager
         
         Args:
             db_path (str): Path to the SQLite database file
         """
         self.db_path = db_path
-        self.ensure_dir_exists()
+        self._initialize_db()
     
-    def ensure_dir_exists(self):
-        """Ensure the directory for the database exists"""
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+    def _initialize_db(self):
+        """Initialize the database file and structure"""
+        # Create directory if it doesn't exist
+        db_dir = os.path.dirname(self.db_path)
+        if not os.path.exists(db_dir):
+            os.makedirs(db_dir)
+        
+        # Create database file if it doesn't exist
+        if not os.path.exists(self.db_path):
+            logger.info(f"Creating new database at {self.db_path}")
+            self._create_schema()
+        else:
+            logger.info("Database already exists, skipping initialization")
     
-    def get_connection(self):
+    def _create_schema(self):
+        """Create the initial database schema"""
+        try:
+            # Create users table
+            self.execute_query("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT UNIQUE,
+                    password_hash TEXT,
+                    name TEXT,
+                    salt TEXT,
+                    created_at TEXT,
+                    last_login TEXT
+                )
+            """)
+            
+            # Create finance_categories table
+            self.execute_query("""
+                CREATE TABLE IF NOT EXISTS finance_categories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    name TEXT,
+                    type TEXT,
+                    created_at TEXT
+                )
+            """)
+            
+            # Create finance_transactions table
+            self.execute_query("""
+                CREATE TABLE IF NOT EXISTS finance_transactions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    category_id INTEGER,
+                    title TEXT,
+                    amount REAL,
+                    type TEXT,
+                    date TEXT,
+                    description TEXT,
+                    created_at TEXT,
+                    FOREIGN KEY (category_id) REFERENCES finance_categories (id)
+                )
+            """)
+            
+            # Create health_exercises table
+            self.execute_query("""
+                CREATE TABLE IF NOT EXISTS health_exercises (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    date TEXT,
+                    exercise_type TEXT,
+                    duration INTEGER,
+                    calories_burned INTEGER,
+                    notes TEXT,
+                    created_at TEXT
+                )
+            """)
+            
+            # Create health_metrics table
+            self.execute_query("""
+                CREATE TABLE IF NOT EXISTS health_metrics (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    date TEXT,
+                    weight REAL,
+                    systolic INTEGER,
+                    diastolic INTEGER,
+                    heart_rate INTEGER,
+                    sleep_hours REAL,
+                    stress_level INTEGER,
+                    notes TEXT,
+                    created_at TEXT
+                )
+            """)
+            
+            # Create health_goals table
+            self.execute_query("""
+                CREATE TABLE IF NOT EXISTS health_goals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    goal_type TEXT,
+                    target_value REAL,
+                    current_value REAL,
+                    start_date TEXT,
+                    target_date TEXT,
+                    completed INTEGER,
+                    notes TEXT,
+                    created_at TEXT
+                )
+            """)
+            
+            # Create calendar_events table
+            self.execute_query("""
+                CREATE TABLE IF NOT EXISTS calendar_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    title TEXT,
+                    date TEXT,
+                    start_time TEXT,
+                    end_time TEXT,
+                    location TEXT,
+                    description TEXT,
+                    all_day INTEGER,
+                    has_reminder INTEGER,
+                    reminder_time TEXT,
+                    created_at TEXT
+                )
+            """)
+            
+            # Create calendar_tasks table
+            self.execute_query("""
+                CREATE TABLE IF NOT EXISTS calendar_tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    title TEXT,
+                    due_date TEXT,
+                    priority TEXT,
+                    completed INTEGER,
+                    has_reminder INTEGER,
+                    reminder_time TEXT,
+                    notes TEXT,
+                    created_at TEXT
+                )
+            """)
+            
+            # Create calendar_reminders table
+            self.execute_query("""
+                CREATE TABLE IF NOT EXISTS calendar_reminders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    item_id INTEGER,
+                    item_type TEXT,
+                    reminder_time TEXT,
+                    notified INTEGER,
+                    created_at TEXT
+                )
+            """)
+            
+            # Create user_settings table
+            self.execute_query("""
+                CREATE TABLE IF NOT EXISTS user_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER UNIQUE,
+                    theme TEXT,
+                    language TEXT,
+                    reminder_default_time INTEGER,
+                    reminder_default_unit TEXT,
+                    backup_location TEXT,
+                    backup_frequency TEXT,
+                    last_backup TEXT,
+                    created_at TEXT
+                )
+            """)
+            
+            # Create default categories
+            self._create_default_categories()
+            
+            logger.info("Database schema created successfully")
+        except Exception as e:
+            logger.error(f"Error creating database schema: {str(e)}")
+            raise
+    
+    def _create_default_categories(self):
+        """Create default finance categories"""
+        default_categories = [
+            # Income categories
+            (0, "حقوق", "income"),
+            (0, "سود سرمایه‌گذاری", "income"),
+            (0, "هدیه", "income"),
+            (0, "درآمد فریلنسری", "income"),
+            (0, "سایر درآمدها", "income"),
+            
+            # Expense categories
+            (0, "مسکن", "expense"),
+            (0, "خوراک", "expense"),
+            (0, "حمل و نقل", "expense"),
+            (0, "قبوض", "expense"),
+            (0, "سلامت", "expense"),
+            (0, "سرگرمی", "expense"),
+            (0, "آموزش", "expense"),
+            (0, "پوشاک", "expense"),
+            (0, "سایر هزینه‌ها", "expense")
+        ]
+        
+        now = time.strftime('%Y-%m-%d %H:%M:%S')
+        
+        for category in default_categories:
+            query = """
+                INSERT INTO finance_categories (user_id, name, type, created_at)
+                VALUES (?, ?, ?, ?)
+            """
+            self.execute_insert(query, (category[0], category[1], category[2], now))
+    
+    def get_connection(self) -> sqlite3.Connection:
         """Get a database connection
         
         Returns:
-            sqlite3.Connection: SQLite connection object
+            sqlite3.Connection: Database connection
         """
         conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row  # Return rows as dictionaries
+        conn.row_factory = sqlite3.Row
         return conn
     
-    def execute_query(self, query, params=None):
+    def execute_query(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
         """Execute a query and return the results
         
         Args:
-            query (str): SQL query to execute
-            params (tuple, optional): Parameters for the query. Defaults to None.
+            query (str): SQL query
+            params (tuple, optional): Query parameters
             
         Returns:
-            list: List of rows matching the query
+            list: List of dictionaries with query results
         """
+        conn = self.get_connection()
         try:
-            conn = self.get_connection()
             cursor = conn.cursor()
+            cursor.execute(query, params)
             
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-                
-            results = cursor.fetchall()
-            conn.close()
-            return results
-        except Exception as e:
-            logger.error(f"Database query error: {str(e)}")
-            raise
-    
-    def execute_update(self, query, params=None):
-        """Execute an update query (INSERT, UPDATE, DELETE)
-        
-        Args:
-            query (str): SQL query to execute
-            params (tuple, optional): Parameters for the query. Defaults to None.
+            if query.strip().upper().startswith(("SELECT", "PRAGMA")):
+                results = [dict(row) for row in cursor.fetchall()]
+                return results
             
-        Returns:
-            int: Number of rows affected
-        """
-        try:
-            conn = self.get_connection()
-            cursor = conn.cursor()
-            
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-                
-            row_count = cursor.rowcount
             conn.commit()
-            conn.close()
-            return row_count
+            return []
         except Exception as e:
-            logger.error(f"Database update error: {str(e)}")
+            conn.rollback()
+            logger.error(f"Error executing query: {str(e)}")
             raise
+        finally:
+            conn.close()
     
-    def execute_insert(self, query, params=None):
-        """Execute an insert query and return the last row ID
+    def execute_insert(self, query: str, params: tuple = ()) -> int:
+        """Execute an insert query and return the new row ID
         
         Args:
-            query (str): SQL query to execute
-            params (tuple, optional): Parameters for the query. Defaults to None.
+            query (str): SQL insert query
+            params (tuple, optional): Query parameters
             
         Returns:
-            int: ID of the last inserted row
+            int: ID of the new row
         """
+        conn = self.get_connection()
         try:
-            conn = self.get_connection()
             cursor = conn.cursor()
-            
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-                
-            last_id = cursor.lastrowid
+            cursor.execute(query, params)
             conn.commit()
-            conn.close()
-            return last_id
+            return cursor.lastrowid
         except Exception as e:
-            logger.error(f"Database insert error: {str(e)}")
+            conn.rollback()
+            logger.error(f"Error executing insert: {str(e)}")
             raise
+        finally:
+            conn.close()
     
-    def execute_script(self, script):
-        """Execute multiple SQL statements
+    def execute_update(self, query: str, params: tuple = ()) -> int:
+        """Execute an update query and return the number of affected rows
         
         Args:
-            script (str): SQL script containing multiple statements
+            query (str): SQL update query
+            params (tuple, optional): Query parameters
+            
+        Returns:
+            int: Number of affected rows
         """
+        conn = self.get_connection()
         try:
-            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            conn.commit()
+            return cursor.rowcount
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error executing update: {str(e)}")
+            raise
+        finally:
+            conn.close()
+    
+    def execute_batch(self, query: str, params_list: List[tuple]) -> int:
+        """Execute a batch of queries
+        
+        Args:
+            query (str): SQL query
+            params_list (list): List of parameter tuples
+            
+        Returns:
+            int: Number of operations
+        """
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.executemany(query, params_list)
+            conn.commit()
+            return cursor.rowcount
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error executing batch: {str(e)}")
+            raise
+        finally:
+            conn.close()
+    
+    def execute_script(self, script: str) -> None:
+        """Execute a SQL script
+        
+        Args:
+            script (str): SQL script with multiple statements
+        """
+        conn = self.get_connection()
+        try:
             cursor = conn.cursor()
             cursor.executescript(script)
             conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error executing script: {str(e)}")
+            raise
+        finally:
             conn.close()
-        except Exception as e:
-            logger.error(f"Database script error: {str(e)}")
-            raise
     
-    def initialize_database(self):
-        """Initialize the database schema if it doesn't exist"""
-        # Check if database already exists
-        if os.path.exists(self.db_path) and os.path.getsize(self.db_path) > 0:
-            logger.info("Database already exists, skipping initialization")
-            return
-        
-        logger.info("Initializing database schema")
-        
-        # Define database schema
-        schema = """
-        -- Users table
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            last_login TEXT
-        );
-        
-        -- Financial categories
-        CREATE TABLE IF NOT EXISTS finance_categories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            type TEXT NOT NULL,  -- 'expense', 'income', or 'both'
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        );
-        
-        -- Financial transactions
-        CREATE TABLE IF NOT EXISTS finance_transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            category_id INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            amount REAL NOT NULL,
-            type TEXT NOT NULL,  -- 'expense' or 'income'
-            date TEXT NOT NULL,
-            description TEXT,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-            FOREIGN KEY (category_id) REFERENCES finance_categories (id) ON DELETE CASCADE
-        );
-        
-        -- Health exercises
-        CREATE TABLE IF NOT EXISTS health_exercises (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            exercise_type TEXT NOT NULL,
-            duration INTEGER NOT NULL,  -- Minutes
-            calories_burned INTEGER NOT NULL,
-            date TEXT NOT NULL,
-            notes TEXT,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        );
-        
-        -- Health metrics
-        CREATE TABLE IF NOT EXISTS health_metrics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            date TEXT NOT NULL,
-            weight REAL,
-            systolic INTEGER,  -- Blood pressure (upper number)
-            diastolic INTEGER,  -- Blood pressure (lower number)
-            heart_rate INTEGER,
-            sleep_hours REAL,
-            notes TEXT,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        );
-        
-        -- Health goals
-        CREATE TABLE IF NOT EXISTS health_goals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            goal_type TEXT NOT NULL,
-            target_value REAL NOT NULL,
-            deadline TEXT NOT NULL,  -- Date
-            progress REAL NOT NULL DEFAULT 0,  -- Percentage
-            notes TEXT,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        );
-        
-        -- Calendar events
-        CREATE TABLE IF NOT EXISTS calendar_events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            date TEXT NOT NULL,  -- Date
-            start_time TEXT,  -- Time (HH:MM)
-            end_time TEXT,  -- Time (HH:MM)
-            location TEXT,
-            description TEXT,
-            all_day BOOLEAN NOT NULL DEFAULT 0,
-            has_reminder BOOLEAN NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        );
-        
-        -- Tasks
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            due_date TEXT NOT NULL,  -- Date
-            priority TEXT NOT NULL,  -- 'low', 'medium', 'high'
-            description TEXT,
-            completed BOOLEAN NOT NULL DEFAULT 0,
-            completion_date TEXT,  -- Date
-            has_reminder BOOLEAN NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        );
-        
-        -- Reminders
-        CREATE TABLE IF NOT EXISTS reminders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            source_type TEXT NOT NULL,  -- 'event' or 'task'
-            source_id INTEGER NOT NULL,  -- event_id or task_id
-            reminder_time TEXT NOT NULL,  -- DateTime (YYYY-MM-DD HH:MM)
-            status TEXT NOT NULL DEFAULT 'pending',  -- 'pending', 'triggered', 'dismissed'
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        );
-        
-        -- User settings
-        CREATE TABLE IF NOT EXISTS user_settings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            setting_key TEXT NOT NULL,
-            setting_value TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        );
-        
-        -- Insert default categories
-        INSERT INTO finance_categories (user_id, name, type, created_at)
-        VALUES
-            (1, 'خوراک', 'expense', datetime('now')),
-            (1, 'مسکن', 'expense', datetime('now')),
-            (1, 'حمل و نقل', 'expense', datetime('now')),
-            (1, 'قبوض', 'expense', datetime('now')),
-            (1, 'تفریح', 'expense', datetime('now')),
-            (1, 'پوشاک', 'expense', datetime('now')),
-            (1, 'آموزش', 'expense', datetime('now')),
-            (1, 'درمان', 'expense', datetime('now')),
-            (1, 'حقوق', 'income', datetime('now')),
-            (1, 'پاداش', 'income', datetime('now')),
-            (1, 'درآمد متفرقه', 'income', datetime('now'));
-        """
-        
-        try:
-            self.execute_script(schema)
-            logger.info("Database schema initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize database schema: {str(e)}")
-            raise
-    
-    def backup_database(self, backup_path):
+    def backup_database(self, backup_path: str) -> bool:
         """Create a backup of the database
         
         Args:
-            backup_path (str): Path to save the backup file
+            backup_path (str): Path for the backup file
             
         Returns:
             bool: True if successful, False otherwise
         """
         try:
-            if not os.path.exists(self.db_path):
-                logger.error("Database does not exist, cannot create backup")
-                return False
+            # Create directory if it doesn't exist
+            backup_dir = os.path.dirname(backup_path)
+            if not os.path.exists(backup_dir):
+                os.makedirs(backup_dir)
             
-            # Ensure backup directory exists
-            os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+            # Create a new connection to the backup file
+            source_conn = self.get_connection()
+            dest_conn = sqlite3.connect(backup_path)
             
-            # Open the database and backup file
-            source_conn = sqlite3.connect(self.db_path)
-            backup_conn = sqlite3.connect(backup_path)
-            
-            # Create backup
-            source_conn.backup(backup_conn)
+            # Copy data
+            source_conn.backup(dest_conn)
             
             # Close connections
             source_conn.close()
-            backup_conn.close()
+            dest_conn.close()
             
             logger.info(f"Database backup created at {backup_path}")
             return True
         except Exception as e:
-            logger.error(f"Database backup error: {str(e)}")
+            logger.error(f"Error backing up database: {str(e)}")
             return False
     
-    def restore_database(self, backup_path):
+    def restore_database(self, backup_path: str) -> bool:
         """Restore database from a backup
         
         Args:
@@ -341,25 +399,22 @@ class DatabaseManager:
         """
         try:
             if not os.path.exists(backup_path):
-                logger.error(f"Backup file {backup_path} does not exist")
+                logger.error(f"Backup file not found: {backup_path}")
                 return False
             
-            # Ensure database directory exists
-            self.ensure_dir_exists()
+            # Create a new connection to the backup file
+            source_conn = sqlite3.connect(backup_path)
+            dest_conn = self.get_connection()
             
-            # Open the backup and database files
-            backup_conn = sqlite3.connect(backup_path)
-            target_conn = sqlite3.connect(self.db_path)
-            
-            # Restore database
-            backup_conn.backup(target_conn)
+            # Copy data
+            source_conn.backup(dest_conn)
             
             # Close connections
-            backup_conn.close()
-            target_conn.close()
+            source_conn.close()
+            dest_conn.close()
             
             logger.info(f"Database restored from {backup_path}")
             return True
         except Exception as e:
-            logger.error(f"Database restore error: {str(e)}")
+            logger.error(f"Error restoring database: {str(e)}")
             return False
