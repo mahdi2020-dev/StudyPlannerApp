@@ -1506,6 +1506,7 @@ def run_replit_web_preview():
             <a href="/finance">مالی</a>
             <a href="/health">سلامت</a>
             <a href="/calendar">تقویم</a>
+            <a href="/religious">اطلاعات مذهبی</a>
             <a href="/ai-chat">چت هوشمند</a>
             <a href="/logout">خروج</a>
         </div>
@@ -1514,7 +1515,40 @@ def run_replit_web_preview():
     <div class="content">
         <h2>داشبورد</h2>
         <p>خوش آمدید {current_user["username"]}!</p>
-        <p>این صفحه در حال توسعه است...</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d;">
+                <h3 style="color: #00ffaa; margin-top: 0;">آمار سلامت</h3>
+                <p>وضعیت کلی: سالم</p>
+                <p>قدم‌های امروز: 6,580</p>
+                <p>آخرین ورزش: پیاده‌روی (30 دقیقه)</p>
+                <a href="/health" style="display: inline-block; margin-top: 10px; padding: 5px 10px; background-color: rgba(0, 255, 170, 0.1); color: #00ffaa; border: 1px solid #00ffaa; border-radius: 5px; text-decoration: none;">مشاهده جزئیات</a>
+            </div>
+            
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d;">
+                <h3 style="color: #00ffaa; margin-top: 0;">خلاصه مالی</h3>
+                <p>درآمد ماه: 12,500,000 تومان</p>
+                <p>هزینه‌های ماه: 8,200,000 تومان</p>
+                <p>پس‌انداز: 4,300,000 تومان</p>
+                <a href="/finance" style="display: inline-block; margin-top: 10px; padding: 5px 10px; background-color: rgba(0, 255, 170, 0.1); color: #00ffaa; border: 1px solid #00ffaa; border-radius: 5px; text-decoration: none;">مشاهده جزئیات</a>
+            </div>
+            
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d;">
+                <h3 style="color: #00ffaa; margin-top: 0;">رویدادهای امروز</h3>
+                <p>جلسه کاری: 10:30 - 12:00</p>
+                <p>ورزش: 17:00 - 18:00</p>
+                <p>مطالعه: 21:00 - 22:00</p>
+                <a href="/calendar" style="display: inline-block; margin-top: 10px; padding: 5px 10px; background-color: rgba(0, 255, 170, 0.1); color: #00ffaa; border: 1px solid #00ffaa; border-radius: 5px; text-decoration: none;">مشاهده تقویم</a>
+            </div>
+            
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d;">
+                <h3 style="color: #00ffaa; margin-top: 0;">یادآوری‌های مهم</h3>
+                <p>پرداخت قبض برق: 2 روز مانده</p>
+                <p>نوبت دکتر: 5 روز مانده</p>
+                <p>سالگرد ازدواج: 12 روز مانده</p>
+                <a href="/calendar" style="display: inline-block; margin-top: 10px; padding: 5px 10px; background-color: rgba(0, 255, 170, 0.1); color: #00ffaa; border: 1px solid #00ffaa; border-radius: 5px; text-decoration: none;">مدیریت یادآوری‌ها</a>
+            </div>
+        </div>
     </div>
 </body>
 </html>
@@ -1570,6 +1604,7 @@ def run_replit_web_preview():
             <a href="/finance">مالی</a>
             <a href="/health">سلامت</a>
             <a href="/calendar">تقویم</a>
+            <a href="/religious">اطلاعات مذهبی</a>
             <a href="/ai-chat">چت هوشمند</a>
             <a href="/logout">خروج</a>
         </div>
@@ -1577,7 +1612,114 @@ def run_replit_web_preview():
     
     <div class="content">
         <h2>مدیریت مالی</h2>
-        <p>این صفحه در حال توسعه است...</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+            <!-- خلاصه مالی -->
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d; grid-column: 1 / -1;">
+                <h3 style="color: #00ffaa; margin-top: 0;">خلاصه وضعیت مالی</h3>
+                <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px; padding: 15px; background-color: rgba(0, 255, 170, 0.05); border-radius: 8px; margin: 5px;">
+                        <p style="margin: 0; font-size: 14px;">موجودی کل</p>
+                        <p style="margin: 5px 0; font-size: 24px; font-weight: bold; color: #00ffaa;">24,500,000 تومان</p>
+                    </div>
+                    <div style="flex: 1; min-width: 200px; padding: 15px; background-color: rgba(0, 255, 170, 0.05); border-radius: 8px; margin: 5px;">
+                        <p style="margin: 0; font-size: 14px;">مجموع درآمد ماه</p>
+                        <p style="margin: 5px 0; font-size: 24px; font-weight: bold; color: #00ffaa;">12,500,000 تومان</p>
+                    </div>
+                    <div style="flex: 1; min-width: 200px; padding: 15px; background-color: rgba(0, 255, 170, 0.05); border-radius: 8px; margin: 5px;">
+                        <p style="margin: 0; font-size: 14px;">مجموع هزینه ماه</p>
+                        <p style="margin: 5px 0; font-size: 24px; font-weight: bold; color: #ff5555;">8,200,000 تومان</p>
+                    </div>
+                    <div style="flex: 1; min-width: 200px; padding: 15px; background-color: rgba(0, 255, 170, 0.05); border-radius: 8px; margin: 5px;">
+                        <p style="margin: 0; font-size: 14px;">پس‌انداز ماه</p>
+                        <p style="margin: 5px 0; font-size: 24px; font-weight: bold; color: #00ffaa;">4,300,000 تومان</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- افزودن تراکنش جدید -->
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d;">
+                <h3 style="color: #00ffaa; margin-top: 0;">افزودن تراکنش جدید</h3>
+                <form id="add-transaction-form" style="display: flex; flex-direction: column; gap: 15px;">
+                    <div>
+                        <label for="transaction-type" style="display: block; margin-bottom: 5px;">نوع تراکنش</label>
+                        <select id="transaction-type" name="type" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                            <option value="income">درآمد</option>
+                            <option value="expense">هزینه</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="transaction-amount" style="display: block; margin-bottom: 5px;">مبلغ (تومان)</label>
+                        <input id="transaction-amount" name="amount" type="number" placeholder="مبلغ را وارد کنید" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                    </div>
+                    <div>
+                        <label for="transaction-category" style="display: block; margin-bottom: 5px;">دسته‌بندی</label>
+                        <select id="transaction-category" name="category" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                            <option value="salary">حقوق</option>
+                            <option value="food">خوراک</option>
+                            <option value="transportation">حمل و نقل</option>
+                            <option value="shopping">خرید</option>
+                            <option value="entertainment">تفریح</option>
+                            <option value="bills">قبوض</option>
+                            <option value="other">سایر</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="transaction-description" style="display: block; margin-bottom: 5px;">توضیحات</label>
+                        <input id="transaction-description" name="description" type="text" placeholder="توضیحات تراکنش" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                    </div>
+                    <button type="submit" style="padding: 10px; background-color: #00ffaa; color: #121212; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px;">ثبت تراکنش</button>
+                </form>
+            </div>
+            
+            <!-- آخرین تراکنش‌ها -->
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d; grid-column: span 2;">
+                <h3 style="color: #00ffaa; margin-top: 0;">آخرین تراکنش‌ها</h3>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #2d2d2d;">
+                                <th style="padding: 10px; text-align: right;">تاریخ</th>
+                                <th style="padding: 10px; text-align: right;">مبلغ</th>
+                                <th style="padding: 10px; text-align: right;">دسته‌بندی</th>
+                                <th style="padding: 10px; text-align: right;">توضیحات</th>
+                                <th style="padding: 10px; text-align: right;">نوع</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom: 1px solid #2d2d2d;">
+                                <td style="padding: 10px;">۱۴۰۴/۰۱/۱۵</td>
+                                <td style="padding: 10px; color: #00ffaa;">12,500,000 تومان</td>
+                                <td style="padding: 10px;">حقوق</td>
+                                <td style="padding: 10px;">حقوق فروردین ماه</td>
+                                <td style="padding: 10px;"><span style="padding: 3px 8px; background-color: rgba(0, 255, 170, 0.1); color: #00ffaa; border-radius: 3px;">درآمد</span></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #2d2d2d;">
+                                <td style="padding: 10px;">۱۴۰۴/۰۱/۱۲</td>
+                                <td style="padding: 10px; color: #ff5555;">2,500,000 تومان</td>
+                                <td style="padding: 10px;">خرید</td>
+                                <td style="padding: 10px;">خرید لوازم خانه</td>
+                                <td style="padding: 10px;"><span style="padding: 3px 8px; background-color: rgba(255, 85, 85, 0.1); color: #ff5555; border-radius: 3px;">هزینه</span></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #2d2d2d;">
+                                <td style="padding: 10px;">۱۴۰۴/۰۱/۱۰</td>
+                                <td style="padding: 10px; color: #ff5555;">1,200,000 تومان</td>
+                                <td style="padding: 10px;">قبوض</td>
+                                <td style="padding: 10px;">پرداخت قبوض</td>
+                                <td style="padding: 10px;"><span style="padding: 3px 8px; background-color: rgba(255, 85, 85, 0.1); color: #ff5555; border-radius: 3px;">هزینه</span></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #2d2d2d;">
+                                <td style="padding: 10px;">۱۴۰۴/۰۱/۰۵</td>
+                                <td style="padding: 10px; color: #ff5555;">850,000 تومان</td>
+                                <td style="padding: 10px;">خوراک</td>
+                                <td style="padding: 10px;">خرید هفتگی</td>
+                                <td style="padding: 10px;"><span style="padding: 3px 8px; background-color: rgba(255, 85, 85, 0.1); color: #ff5555; border-radius: 3px;">هزینه</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>
@@ -1633,6 +1775,7 @@ def run_replit_web_preview():
             <a href="/finance">مالی</a>
             <a href="/health">سلامت</a>
             <a href="/calendar">تقویم</a>
+            <a href="/religious">اطلاعات مذهبی</a>
             <a href="/ai-chat">چت هوشمند</a>
             <a href="/logout">خروج</a>
         </div>
@@ -1640,7 +1783,138 @@ def run_replit_web_preview():
     
     <div class="content">
         <h2>مدیریت سلامت</h2>
-        <p>این صفحه در حال توسعه است...</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+            <!-- خلاصه سلامت -->
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d; grid-column: 1 / -1;">
+                <h3 style="color: #00ffaa; margin-top: 0;">خلاصه وضعیت سلامت</h3>
+                <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px; padding: 15px; background-color: rgba(0, 255, 170, 0.05); border-radius: 8px; margin: 5px;">
+                        <p style="margin: 0; font-size: 14px;">شاخص توده بدنی (BMI)</p>
+                        <p style="margin: 5px 0; font-size: 24px; font-weight: bold; color: #00ffaa;">22.4</p>
+                        <p style="margin: 0; font-size: 12px; opacity: 0.7;">طبیعی</p>
+                    </div>
+                    <div style="flex: 1; min-width: 200px; padding: 15px; background-color: rgba(0, 255, 170, 0.05); border-radius: 8px; margin: 5px;">
+                        <p style="margin: 0; font-size: 14px;">قدم‌های امروز</p>
+                        <p style="margin: 5px 0; font-size: 24px; font-weight: bold; color: #00ffaa;">6,580</p>
+                        <p style="margin: 0; font-size: 12px; opacity: 0.7;">از هدف 10,000</p>
+                    </div>
+                    <div style="flex: 1; min-width: 200px; padding: 15px; background-color: rgba(0, 255, 170, 0.05); border-radius: 8px; margin: 5px;">
+                        <p style="margin: 0; font-size: 14px;">ساعات خواب</p>
+                        <p style="margin: 5px 0; font-size: 24px; font-weight: bold; color: #00ffaa;">7.5</p>
+                        <p style="margin: 0; font-size: 12px; opacity: 0.7;">ساعت (دیشب)</p>
+                    </div>
+                    <div style="flex: 1; min-width: 200px; padding: 15px; background-color: rgba(0, 255, 170, 0.05); border-radius: 8px; margin: 5px;">
+                        <p style="margin: 0; font-size: 14px;">کالری مصرفی روزانه</p>
+                        <p style="margin: 5px 0; font-size: 24px; font-weight: bold; color: #00ffaa;">1,850</p>
+                        <p style="margin: 0; font-size: 12px; opacity: 0.7;">از هدف 2,200</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- افزودن فعالیت ورزشی -->
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d;">
+                <h3 style="color: #00ffaa; margin-top: 0;">افزودن فعالیت ورزشی</h3>
+                <form id="add-exercise-form" style="display: flex; flex-direction: column; gap: 15px;">
+                    <div>
+                        <label for="exercise-type" style="display: block; margin-bottom: 5px;">نوع فعالیت</label>
+                        <select id="exercise-type" name="type" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                            <option value="walking">پیاده روی</option>
+                            <option value="running">دویدن</option>
+                            <option value="cycling">دوچرخه سواری</option>
+                            <option value="swimming">شنا</option>
+                            <option value="gym">تمرین با وزنه</option>
+                            <option value="yoga">یوگا</option>
+                            <option value="other">سایر</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="exercise-duration" style="display: block; margin-bottom: 5px;">مدت زمان (دقیقه)</label>
+                        <input id="exercise-duration" name="duration" type="number" placeholder="مدت زمان را وارد کنید" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                    </div>
+                    <div>
+                        <label for="exercise-calories" style="display: block; margin-bottom: 5px;">کالری سوزانده شده (تخمینی)</label>
+                        <input id="exercise-calories" name="calories" type="number" placeholder="کالری را وارد کنید" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                    </div>
+                    <div>
+                        <label for="exercise-notes" style="display: block; margin-bottom: 5px;">یادداشت</label>
+                        <input id="exercise-notes" name="notes" type="text" placeholder="یادداشت اختیاری" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                    </div>
+                    <button type="submit" style="padding: 10px; background-color: #00ffaa; color: #121212; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px;">ثبت فعالیت</button>
+                </form>
+            </div>
+            
+            <!-- ثبت شاخص‌های سلامت -->
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d;">
+                <h3 style="color: #00ffaa; margin-top: 0;">ثبت شاخص‌های سلامت</h3>
+                <form id="add-metrics-form" style="display: flex; flex-direction: column; gap: 15px;">
+                    <div>
+                        <label for="metric-weight" style="display: block; margin-bottom: 5px;">وزن (کیلوگرم)</label>
+                        <input id="metric-weight" name="weight" type="number" step="0.1" placeholder="وزن را وارد کنید" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                    </div>
+                    <div>
+                        <label for="metric-height" style="display: block; margin-bottom: 5px;">قد (سانتی‌متر)</label>
+                        <input id="metric-height" name="height" type="number" placeholder="قد را وارد کنید" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                    </div>
+                    <div>
+                        <label for="metric-blood-pressure" style="display: block; margin-bottom: 5px;">فشار خون (سیستولیک/دیاستولیک)</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input id="metric-systolic" name="systolic" type="number" placeholder="سیستولیک" style="width: 50%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                            <input id="metric-diastolic" name="diastolic" type="number" placeholder="دیاستولیک" style="width: 50%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                        </div>
+                    </div>
+                    <button type="submit" style="padding: 10px; background-color: #00ffaa; color: #121212; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px;">ثبت شاخص‌ها</button>
+                </form>
+            </div>
+            
+            <!-- آخرین فعالیت‌های ورزشی -->
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d; grid-column: span 2;">
+                <h3 style="color: #00ffaa; margin-top: 0;">آخرین فعالیت‌های ورزشی</h3>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #2d2d2d;">
+                                <th style="padding: 10px; text-align: right;">تاریخ</th>
+                                <th style="padding: 10px; text-align: right;">نوع فعالیت</th>
+                                <th style="padding: 10px; text-align: right;">مدت (دقیقه)</th>
+                                <th style="padding: 10px; text-align: right;">کالری</th>
+                                <th style="padding: 10px; text-align: right;">یادداشت</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom: 1px solid #2d2d2d;">
+                                <td style="padding: 10px;">۱۴۰۴/۰۱/۱۶</td>
+                                <td style="padding: 10px;">پیاده‌روی</td>
+                                <td style="padding: 10px;">30</td>
+                                <td style="padding: 10px;">150</td>
+                                <td style="padding: 10px;">در پارک ملت</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #2d2d2d;">
+                                <td style="padding: 10px;">۱۴۰۴/۰۱/۱۴</td>
+                                <td style="padding: 10px;">تمرین با وزنه</td>
+                                <td style="padding: 10px;">45</td>
+                                <td style="padding: 10px;">320</td>
+                                <td style="padding: 10px;">تمرین بالاتنه</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #2d2d2d;">
+                                <td style="padding: 10px;">۱۴۰۴/۰۱/۱۳</td>
+                                <td style="padding: 10px;">دویدن</td>
+                                <td style="padding: 10px;">25</td>
+                                <td style="padding: 10px;">280</td>
+                                <td style="padding: 10px;">دویدن با شدت متوسط</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #2d2d2d;">
+                                <td style="padding: 10px;">۱۴۰۴/۰۱/۱۱</td>
+                                <td style="padding: 10px;">یوگا</td>
+                                <td style="padding: 10px;">40</td>
+                                <td style="padding: 10px;">120</td>
+                                <td style="padding: 10px;">تمرین آرامش ذهن</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>
@@ -1696,6 +1970,7 @@ def run_replit_web_preview():
             <a href="/finance">مالی</a>
             <a href="/health">سلامت</a>
             <a href="/calendar">تقویم</a>
+            <a href="/religious">اطلاعات مذهبی</a>
             <a href="/ai-chat">چت هوشمند</a>
             <a href="/logout">خروج</a>
         </div>
@@ -1703,12 +1978,552 @@ def run_replit_web_preview():
     
     <div class="content">
         <h2>تقویم و مدیریت زمان</h2>
-        <p>این صفحه در حال توسعه است...</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+            <!-- تقویم ماهانه -->
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d; grid-column: 1 / -1;">
+                <h3 style="color: #00ffaa; margin-top: 0;">تقویم فروردین ۱۴۰۴</h3>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <button style="padding: 5px 10px; background-color: rgba(0, 255, 170, 0.1); color: #00ffaa; border: 1px solid #00ffaa; border-radius: 5px; cursor: pointer;">ماه قبل</button>
+                    <span style="color: #00ffaa; font-weight: bold;">فروردین ۱۴۰۴</span>
+                    <button style="padding: 5px 10px; background-color: rgba(0, 255, 170, 0.1); color: #00ffaa; border: 1px solid #00ffaa; border-radius: 5px; cursor: pointer;">ماه بعد</button>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; text-align: center;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 8px; color: #ff5555;">شنبه</th>
+                            <th style="padding: 8px;">یکشنبه</th>
+                            <th style="padding: 8px;">دوشنبه</th>
+                            <th style="padding: 8px;">سه‌شنبه</th>
+                            <th style="padding: 8px;">چهارشنبه</th>
+                            <th style="padding: 8px;">پنجشنبه</th>
+                            <th style="padding: 8px; color: #ff5555;">جمعه</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۱</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۲</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۳</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۴</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۵</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۶</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d; color: #ff5555;">۷</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d; color: #ff5555;">۸</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۹</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۱۰</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۱۱</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۱۲</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۱۳</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d; color: #ff5555;">۱۴</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d; color: #ff5555;">۱۵</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۱۶</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d; background-color: rgba(0, 255, 170, 0.1);">۱۷</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۱۸</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۱۹</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۲۰</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d; color: #ff5555;">۲۱</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d; color: #ff5555;">۲۲</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۲۳</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۲۴</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۲۵</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۲۶</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۲۷</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d; color: #ff5555;">۲۸</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d; color: #ff5555;">۲۹</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۳۰</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d;">۳۱</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d; opacity: 0.3;">۱</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d; opacity: 0.3;">۲</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d; opacity: 0.3;">۳</td>
+                            <td style="padding: 10px; border: 1px solid #2d2d2d; color: #ff5555; opacity: 0.3;">۴</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div style="margin-top: 10px; text-align: left;">
+                    <div style="display: inline-block; width: 12px; height: 12px; background-color: rgba(0, 255, 170, 0.1); margin-left: 5px; border-radius: 3px;"></div>
+                    <span style="font-size: 12px;">امروز</span>
+                    <div style="display: inline-block; width: 12px; height: 12px; background-color: #ff5555; margin-right: 10px; margin-left: 5px; border-radius: 3px;"></div>
+                    <span style="font-size: 12px;">تعطیل</span>
+                </div>
+            </div>
+            
+            <!-- رویدادهای امروز -->
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d;">
+                <h3 style="color: #00ffaa; margin-top: 0;">رویدادهای امروز</h3>
+                <div style="margin-top: 15px;">
+                    <div style="background-color: rgba(0, 255, 170, 0.05); border-radius: 8px; padding: 15px; margin-bottom: 10px; border-right: 3px solid #00ffaa;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h4 style="margin: 0; color: #00ffaa;">جلسه کاری</h4>
+                            <span style="font-size: 14px;">10:30 - 12:00</span>
+                        </div>
+                        <p style="margin: 5px 0 0 0; font-size: 14px;">جلسه با تیم طراحی محصول</p>
+                    </div>
+                    <div style="background-color: rgba(0, 255, 170, 0.05); border-radius: 8px; padding: 15px; margin-bottom: 10px; border-right: 3px solid #00ffaa;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h4 style="margin: 0; color: #00ffaa;">ورزش</h4>
+                            <span style="font-size: 14px;">17:00 - 18:00</span>
+                        </div>
+                        <p style="margin: 5px 0 0 0; font-size: 14px;">پیاده‌روی در پارک ملت</p>
+                    </div>
+                    <div style="background-color: rgba(0, 255, 170, 0.05); border-radius: 8px; padding: 15px; margin-bottom: 10px; border-right: 3px solid #00ffaa;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h4 style="margin: 0; color: #00ffaa;">مطالعه</h4>
+                            <span style="font-size: 14px;">21:00 - 22:00</span>
+                        </div>
+                        <p style="margin: 5px 0 0 0; font-size: 14px;">مطالعه کتاب روانشناسی</p>
+                    </div>
+                </div>
+                <button style="width: 100%; padding: 10px; background-color: rgba(0, 255, 170, 0.1); color: #00ffaa; border: 1px solid #00ffaa; border-radius: 5px; cursor: pointer; margin-top: 15px;">افزودن رویداد جدید</button>
+            </div>
+            
+            <!-- افزودن یادآوری -->
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d;">
+                <h3 style="color: #00ffaa; margin-top: 0;">افزودن یادآوری</h3>
+                <form id="add-reminder-form" style="display: flex; flex-direction: column; gap: 15px;">
+                    <div>
+                        <label for="reminder-title" style="display: block; margin-bottom: 5px;">عنوان یادآوری</label>
+                        <input id="reminder-title" name="title" type="text" placeholder="عنوان را وارد کنید" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                    </div>
+                    <div>
+                        <label for="reminder-date" style="display: block; margin-bottom: 5px;">تاریخ یادآوری</label>
+                        <input id="reminder-date" name="date" type="date" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                    </div>
+                    <div>
+                        <label for="reminder-time" style="display: block; margin-bottom: 5px;">زمان یادآوری</label>
+                        <input id="reminder-time" name="time" type="time" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                    </div>
+                    <div>
+                        <label for="reminder-description" style="display: block; margin-bottom: 5px;">توضیحات</label>
+                        <textarea id="reminder-description" name="description" placeholder="توضیحات یادآوری" style="width: 100%; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px; height: 100px; resize: vertical;"></textarea>
+                    </div>
+                    <button type="submit" style="padding: 10px; background-color: #00ffaa; color: #121212; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">ثبت یادآوری</button>
+                </form>
+            </div>
+            
+            <!-- کارهای در انتظار -->
+            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d; grid-column: span 2;">
+                <h3 style="color: #00ffaa; margin-top: 0;">کارهای در انتظار</h3>
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                    <div style="display: flex; align-items: center; padding: 10px; background-color: rgba(0, 255, 170, 0.05); border-radius: 5px;">
+                        <input type="checkbox" style="margin-left: 10px;">
+                        <div style="flex-grow: 1;">
+                            <div style="font-weight: bold;">تکمیل گزارش پروژه</div>
+                            <div style="font-size: 12px; opacity: 0.7;">تا ۱۸ فروردین</div>
+                        </div>
+                        <div style="display: flex; gap: 5px;">
+                            <button style="background-color: transparent; border: none; color: #00ffaa; cursor: pointer;">ویرایش</button>
+                            <button style="background-color: transparent; border: none; color: #ff5555; cursor: pointer;">حذف</button>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; padding: 10px; background-color: rgba(0, 255, 170, 0.05); border-radius: 5px;">
+                        <input type="checkbox" style="margin-left: 10px;">
+                        <div style="flex-grow: 1;">
+                            <div style="font-weight: bold;">پرداخت قبض برق</div>
+                            <div style="font-size: 12px; opacity: 0.7;">تا ۲۰ فروردین</div>
+                        </div>
+                        <div style="display: flex; gap: 5px;">
+                            <button style="background-color: transparent; border: none; color: #00ffaa; cursor: pointer;">ویرایش</button>
+                            <button style="background-color: transparent; border: none; color: #ff5555; cursor: pointer;">حذف</button>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; padding: 10px; background-color: rgba(0, 255, 170, 0.05); border-radius: 5px;">
+                        <input type="checkbox" style="margin-left: 10px;">
+                        <div style="flex-grow: 1;">
+                            <div style="font-weight: bold;">نوبت دکتر</div>
+                            <div style="font-size: 12px; opacity: 0.7;">تا ۲۲ فروردین</div>
+                        </div>
+                        <div style="display: flex; gap: 5px;">
+                            <button style="background-color: transparent; border: none; color: #00ffaa; cursor: pointer;">ویرایش</button>
+                            <button style="background-color: transparent; border: none; color: #ff5555; cursor: pointer;">حذف</button>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; margin-top: 20px; gap: 10px;">
+                    <input type="text" placeholder="کار جدید..." style="flex-grow: 1; padding: 10px; background-color: #2d2d2d; color: #ecf0f1; border: none; border-radius: 5px;">
+                    <button style="padding: 10px; background-color: #00ffaa; color: #121212; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">افزودن</button>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>
 '''
             self.wfile.write(html_content.encode('utf-8'))
+            
+        def send_religious_page(self):
+            """Send the religious information page"""
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=UTF-8')
+            self.end_headers()
+            
+            try:
+                # Import necessary modules
+                from datetime import datetime
+                import jdatetime
+                import requests
+                import json
+                
+                # Get current date for default prayer times
+                current_date = datetime.now().strftime("%Y-%m-%d")
+                
+                # Get prayer times for today (simplified implementation)
+                prayer_times = self._get_prayer_times()
+                
+                # Get daily prayer
+                daily_prayer = self._get_daily_prayer()
+                
+                # Get religious quote
+                religious_quote = self._get_religious_quote()
+                
+                # Convert to Persian date
+                try:
+                    gregorian_date = datetime.strptime(current_date, "%Y-%m-%d")
+                    persian_date = jdatetime.date.fromgregorian(date=gregorian_date)
+                    persian_date_str = persian_date.strftime("%Y/%m/%d")
+                except Exception as e:
+                    persian_date_str = "تاریخ نامشخص"
+                    persian_date = None
+                
+                # Get religious events for current Persian month
+                religious_events = self._get_religious_events()
+                
+                html_content = f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>اطلاعات مذهبی</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ecf0f1;
+            direction: rtl;
+            margin: 0;
+            padding: 0;
+        }}
+        .navbar {{
+            background-color: #1e1e1e;
+            padding: 15px;
+            text-align: center;
+        }}
+        .content {{
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }}
+        h1, h2, h3 {{
+            color: #00aaff;
+        }}
+        a {{
+            color: #ecf0f1;
+            text-decoration: none;
+            margin: 0 10px;
+        }}
+        .card {{
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #2d2d2d;
+        }}
+        .prayer-times {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+        }}
+        .prayer-time {{
+            background-color: rgba(0, 170, 255, 0.1);
+            border: 1px solid rgba(0, 170, 255, 0.3);
+            border-radius: 5px;
+            padding: 10px;
+            text-align: center;
+        }}
+        .prayer-time h3 {{
+            margin-top: 0;
+            font-size: 16px;
+        }}
+        .daily-prayer {{
+            background-color: rgba(0, 170, 255, 0.05);
+            border: 1px solid rgba(0, 170, 255, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }}
+        .prayer-arabic {{
+            font-size: 24px;
+            margin: 15px 0;
+            font-weight: bold;
+        }}
+        .event-item {{
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: rgba(30, 30, 30, 0.7);
+            border-radius: 5px;
+        }}
+        .event-date {{
+            padding: 8px 12px;
+            background-color: rgba(0, 170, 255, 0.2);
+            border-radius: 5px;
+            margin-left: 15px;
+            font-weight: bold;
+            color: #00aaff;
+        }}
+        .quote-card {{
+            background-color: rgba(0, 170, 255, 0.05);
+            border: 1px solid rgba(0, 170, 255, 0.2);
+            border-radius: 8px;
+            padding: 25px;
+            position: relative;
+        }}
+        .quote-text {{
+            font-size: 18px;
+            margin-bottom: 15px;
+            line-height: 1.8;
+        }}
+        .quote-source {{
+            text-align: left;
+            font-style: italic;
+            opacity: 0.8;
+        }}
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>Persian Life Manager</h1>
+        <div>
+            <a href="/dashboard">داشبورد</a>
+            <a href="/finance">مالی</a>
+            <a href="/health">سلامت</a>
+            <a href="/calendar">تقویم</a>
+            <a href="/religious">اطلاعات مذهبی</a>
+            <a href="/ai-chat">چت هوشمند</a>
+            <a href="/logout">خروج</a>
+        </div>
+    </div>
+    
+    <div class="content">
+        <h2>اطلاعات مذهبی</h2>
+        
+        <div class="daily-prayer">
+            <h3>{daily_prayer['title']} روز</h3>
+            <div class="prayer-arabic">{daily_prayer['arabic']}</div>
+            <div class="prayer-translation">{daily_prayer['persian']}</div>
+        </div>
+        
+        <div class="card">
+            <h2>اوقات شرعی - {persian_date_str}</h2>
+            <div class="prayer-times">
+                <div class="prayer-time">
+                    <h3>اذان صبح</h3>
+                    <p>{prayer_times.get('fajr', 'نامشخص')}</p>
+                </div>
+                <div class="prayer-time">
+                    <h3>طلوع آفتاب</h3>
+                    <p>{prayer_times.get('sunrise', 'نامشخص')}</p>
+                </div>
+                <div class="prayer-time">
+                    <h3>اذان ظهر</h3>
+                    <p>{prayer_times.get('dhuhr', 'نامشخص')}</p>
+                </div>
+                <div class="prayer-time">
+                    <h3>اذان عصر</h3>
+                    <p>{prayer_times.get('asr', 'نامشخص')}</p>
+                </div>
+                <div class="prayer-time">
+                    <h3>اذان مغرب</h3>
+                    <p>{prayer_times.get('maghrib', 'نامشخص')}</p>
+                </div>
+                <div class="prayer-time">
+                    <h3>اذان عشاء</h3>
+                    <p>{prayer_times.get('isha', 'نامشخص')}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>مناسبت‌های مذهبی ماه جاری</h2>
+'''
+                
+                # Add religious events
+                if religious_events:
+                    for event in religious_events:
+                        html_content += f'''
+            <div class="event-item">
+                <div class="event-date">{event['date']}</div>
+                <div class="event-description">{event['description']}</div>
+            </div>'''
+                else:
+                    html_content += '''
+            <p>مناسبت خاصی در این ماه ثبت نشده است.</p>'''
+                
+                html_content += f'''
+        </div>
+        
+        <div class="card">
+            <h2>جمله حکیمانه</h2>
+            <div class="quote-card">
+                <div class="quote-text">{religious_quote['text']}</div>
+                <div class="quote-source">{religious_quote['source']}</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+'''
+                self.wfile.write(html_content.encode('utf-8'))
+            except Exception as e:
+                # If any error occurs, send a simple page
+                html_content = f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>اطلاعات مذهبی</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ecf0f1;
+            direction: rtl;
+            margin: 0;
+            padding: 0;
+        }}
+        .navbar {{
+            background-color: #1e1e1e;
+            padding: 15px;
+            text-align: center;
+        }}
+        .content {{
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }}
+        h1, h2 {{
+            color: #00aaff;
+        }}
+        a {{
+            color: #ecf0f1;
+            text-decoration: none;
+            margin: 0 10px;
+        }}
+        .error {{
+            background-color: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>Persian Life Manager</h1>
+        <div>
+            <a href="/dashboard">داشبورد</a>
+            <a href="/finance">مالی</a>
+            <a href="/health">سلامت</a>
+            <a href="/calendar">تقویم</a>
+            <a href="/religious">اطلاعات مذهبی</a>
+            <a href="/ai-chat">چت هوشمند</a>
+            <a href="/logout">خروج</a>
+        </div>
+    </div>
+    
+    <div class="content">
+        <h2>اطلاعات مذهبی</h2>
+        <div class="error">
+            <p>متأسفانه در بارگذاری اطلاعات مذهبی خطایی رخ داده است. لطفاً بعداً دوباره تلاش کنید.</p>
+            <p>جزئیات خطا: {str(e)}</p>
+        </div>
+    </div>
+</body>
+</html>
+'''
+                self.wfile.write(html_content.encode('utf-8'))
+        
+        def _get_prayer_times(self):
+            """Get prayer times (simplified implementation)"""
+            prayer_times = {
+                'fajr': '05:30',
+                'sunrise': '06:45',
+                'dhuhr': '12:15',
+                'asr': '15:45',
+                'maghrib': '18:30',
+                'isha': '19:45'
+            }
+            return prayer_times
+        
+        def _get_daily_prayer(self):
+            """Get a daily prayer"""
+            prayers = [
+                {
+                    'arabic': 'سُبْحَانَ اللهِ',
+                    'persian': 'پاک و منزه است خداوند',
+                    'title': 'تسبیح'
+                },
+                {
+                    'arabic': 'اَلْحَمْدُ لِلّٰهِ',
+                    'persian': 'ستایش برای خداست',
+                    'title': 'حمد'
+                },
+                {
+                    'arabic': 'لَا إِلَٰهَ إِلَّا ٱللَّٰهُ',
+                    'persian': 'نیست معبودی جز الله',
+                    'title': 'تهلیل'
+                }
+            ]
+            
+            # Use the current day to select a prayer
+            from datetime import datetime
+            day = datetime.now().day
+            return prayers[day % len(prayers)]
+        
+        def _get_religious_quote(self):
+            """Get a religious quote"""
+            quotes = [
+                {
+                    'text': 'هر کس در راه خدا تقوا پیشه کند، خداوند برای او راه نجاتی قرار می‌دهد',
+                    'source': 'قرآن کریم، سوره طلاق، آیه ۲'
+                },
+                {
+                    'text': 'به راستی که انسان در زیان است، مگر کسانی که ایمان آورده و کارهای شایسته انجام داده‌اند و یکدیگر را به حق و صبر سفارش کرده‌اند',
+                    'source': 'قرآن کریم، سوره عصر، آیات ۲-۳'
+                },
+                {
+                    'text': 'با دانش‌ترین مردم کسی است که دانش دیگران را به دانش خود بیفزاید',
+                    'source': 'امام علی (ع)'
+                }
+            ]
+            
+            # Use the current day to select a quote
+            from datetime import datetime
+            day = datetime.now().day
+            return quotes[day % len(quotes)]
+        
+        def _get_religious_events(self):
+            """Get religious events (simplified implementation)"""
+            return [
+                {
+                    'date': '1404/01/01',
+                    'description': 'عید نوروز'
+                },
+                {
+                    'date': '1404/01/13',
+                    'description': 'سیزده بدر'
+                }
+            ]
         
         def send_not_found(self):
             self.send_response(404)
