@@ -484,14 +484,12 @@ def run_replit_web_preview():
             self.send_header('Content-type', 'text/html; charset=UTF-8')
             self.end_headers()
             
-            # Get Firebase configuration from environment variables
-            firebase_api_key = os.environ.get('FIREBASE_API_KEY')
-            firebase_project_id = os.environ.get('FIREBASE_PROJECT_ID')
-            firebase_app_id = os.environ.get('FIREBASE_APP_ID')
+            # Get Supabase configuration from environment variables
+            supabase_url = os.environ.get('SUPABASE_URL')
+            supabase_key = os.environ.get('SUPABASE_KEY')
             
             # Default values for template variables
             login_error = ''
-            register_error = ''
             show_error = ''
             
             # Parse URL parameters
@@ -501,12 +499,10 @@ def run_replit_web_preview():
             # Process error messages
             if 'error' in query_params:
                 error_code = query_params['error'][0]
-                if error_code == 'email-not-verified':
-                    # Removed email verification requirement
-                    # show_error = 'لطفاً ابتدا ایمیل خود را تایید کنید.'
-                    pass
-                elif error_code == 'auth/invalid-credentials':
+                if error_code == 'auth/invalid-credentials':
                     show_error = 'نام کاربری یا رمز عبور اشتباه است.'
+                elif error_code == 'incomplete':
+                    show_error = 'لطفاً تمام فیلدها را پر کنید.'    
                 else:
                     show_error = 'خطا در ورود. لطفاً دوباره تلاش کنید.'
             
@@ -519,26 +515,7 @@ def run_replit_web_preview():
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ورود | Persian Life Manager</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
-    
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification }
-            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
-            
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "''' + firebase_api_key + '''",
-            authDomain: "''' + firebase_project_id + '''.firebaseapp.com",
-            projectId: "''' + firebase_project_id + '''",
-            storageBucket: "''' + firebase_project_id + '''.firebasestorage.app",
-            messagingSenderId: "528189971792",
-            appId: "''' + firebase_app_id + '''"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
+    <script>
         
         // Login functionality with direct form submission to server
         document.getElementById('login-form').addEventListener('submit', (e) => {
@@ -558,32 +535,8 @@ def run_replit_web_preview():
             return true;
         });
 
-        // Registration functionality
-        document.getElementById('register-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('register-email').value;
-            const password = document.getElementById('register-password').value;
-            const name = document.getElementById('register-name').value;
-            const errorElement = document.getElementById('register-error');
-            
-            try {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                await userCredential.user.updateProfile({
-                    displayName: name
-                });
-                await sendEmailVerification(userCredential.user);
-                errorElement.textContent = 'ثبت نام با موفقیت انجام شد. لطفاً ایمیل خود را تایید کنید.';
-                errorElement.style.display = 'block';
-                errorElement.style.color = '#00ffaa';
-            } catch (error) {
-                if (error.code === 'auth/email-already-in-use') {
-                    errorElement.textContent = 'این ایمیل قبلاً ثبت شده است.';
-                } else {
-                    errorElement.textContent = 'خطا در ثبت نام. لطفاً دوباره تلاش کنید.';
-                }
-                errorElement.style.display = 'block';
-            }
-        });
+        // Registration has been disabled - admin-only functionality via Supabase dashboard
+        // This remains here just for structure
     </script>
     <style>
         :root {
