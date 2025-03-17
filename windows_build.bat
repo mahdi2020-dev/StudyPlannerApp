@@ -1,61 +1,80 @@
 @echo off
-REM Build script for Persian Life Manager Windows executable
+echo ===================================
+echo Building Persian Life Manager for Windows...
+echo ===================================
 
-echo Starting build process for Persian Life Manager...
-
-REM Create necessary directories
-mkdir build 2>nul
-mkdir dist 2>nul
-
-REM Check for Python installation
-python --version
-if %ERRORLEVEL% NEQ 0 (
-    echo Error: Python is not installed. Please install Python 3.11 or higher.
+:: Check if Python is installed
+python --version 2>NUL
+if errorlevel 1 (
+    echo Error: Python is not installed or not in PATH
+    echo Please install Python 3.11 or later from https://www.python.org/downloads/
+    pause
     exit /b 1
 )
 
-REM Check for pip installation
-pip --version
-if %ERRORLEVEL% NEQ 0 (
-    echo Error: pip is not installed. Please install pip.
+:: Check if PyInstaller is installed
+python -c "import PyInstaller" 2>NUL
+if errorlevel 1 (
+    echo Installing PyInstaller...
+    pip install pyinstaller
+    if errorlevel 1 (
+        echo Error: Failed to install PyInstaller
+        pause
+        exit /b 1
+    )
+)
+
+:: Check for required Python packages
+echo Checking dependencies...
+python -c "import supabase" 2>NUL
+if errorlevel 1 (
+    echo Installing Supabase client...
+    pip install supabase
+)
+
+python -c "import PyQt6" 2>NUL
+if errorlevel 1 (
+    echo Installing PyQt6...
+    pip install PyQt6 PyQt6-WebEngine
+)
+
+python -c "import jdatetime" 2>NUL
+if errorlevel 1 (
+    echo Installing jdatetime...
+    pip install jdatetime
+)
+
+python -c "import openai" 2>NUL
+if errorlevel 1 (
+    echo Installing OpenAI...
+    pip install openai
+)
+
+echo Creating model file (if not exists)...
+python create_model.py
+
+:: Build the executable
+echo Building executable...
+pyinstaller --name="Persian Life Manager" ^
+            --icon=generated-icon.png ^
+            --windowed ^
+            --clean ^
+            --add-data="app/resources;app/resources" ^
+            --add-data="app/static;app/static" ^
+            --add-data="app/templates;app/templates" ^
+            --add-data="app/ui/style;app/ui/style" ^
+            run_desktop.py
+
+:: Check if build was successful
+if not exist "dist\Persian Life Manager\Persian Life Manager.exe" (
+    echo Error: Build failed
+    pause
     exit /b 1
 )
 
-REM Install requirements
-echo Installing required packages...
-pip install -r requirements.txt
-pip install pyinstaller
-
-REM Create executable
-echo Creating executable...
-pyinstaller ^
-    --name "Persian Life Manager" ^
-    --icon=app/resources/images/icon.ico ^
-    --windowed ^
-    --noconfirm ^
-    --clean ^
-    --add-data "app/resources;app/resources" ^
-    --add-data "app/templates;app/templates" ^
-    --add-data "app/static;app/static" ^
-    --add-data "serviceAccountKey.json;." ^
-    --hidden-import firebase_admin ^
-    --hidden-import firebase_admin.auth ^
-    --hidden-import firebase_admin.credentials ^
-    --hidden-import firebase_admin.firestore ^
-    --hidden-import jdatetime ^
-    --hidden-import PyQt6 ^
-    --hidden-import PyQt6.QtWidgets ^
-    --hidden-import PyQt6.QtCore ^
-    --hidden-import PyQt6.QtGui ^
-    --hidden-import PyQt6.QtWebEngineWidgets ^
-    --hidden-import openai ^
-    --hidden-import tflite_runtime ^
-    run_desktop.py
-
-echo Build complete!
-echo The executable is located in the 'dist\Persian Life Manager' directory.
-echo.
-echo To create a Windows installer, you need NSIS installed.
-echo Download NSIS from: https://nsis.sourceforge.io/Download
+echo ===================================
+echo Build successful!
+echo Executable created at dist\Persian Life Manager\Persian Life Manager.exe
+echo ===================================
 
 pause

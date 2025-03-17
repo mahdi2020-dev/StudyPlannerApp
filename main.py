@@ -1347,13 +1347,23 @@ def run_replit_web_preview():
                 self.send_redirect('/login?resend_error=error')
                 
         def handle_guest_login(self):
-            """Handle guest login request"""
-            # Set session for guest user with a special guest ID and username
-            current_user["user_id"] = "guest-user-id"
-            current_user["username"] = "کاربر مهمان"
-            
-            logger.info("Guest user logged in")
-            self.send_redirect('/dashboard')
+            """Handle guest login request using Supabase guest account"""
+            try:
+                # Use the auth service to create a guest user
+                guest_user = auth_service.create_guest_user()
+                
+                # Set session for guest user
+                current_user["user_id"] = guest_user.id
+                current_user["username"] = guest_user.name
+                
+                logger.info("Guest user logged in")
+                self.send_redirect('/dashboard')
+            except Exception as e:
+                logger.error(f"Guest login error: {str(e)}")
+                # Fallback to simple guest login if service fails
+                current_user["user_id"] = "guest-user-id"
+                current_user["username"] = "کاربر مهمان"
+                self.send_redirect('/dashboard')
         
         def handle_api_chat_post(self, json_data):
             if ai_chat_service is None:
