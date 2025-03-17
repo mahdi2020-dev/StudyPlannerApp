@@ -18,11 +18,30 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller firebase_admin PyQt6
+          pip install pyinstaller
+          pip install -r requirements.txt  # نصب همه وابستگی‌ها از فایل requirements.txt
 
       - name: Build EXE
         run: |
-          pyinstaller --onefile --noconsole --hidden-import=firebase_admin --hidden-import=PyQt6 main.py
+          pyinstaller --onefile --noconsole --debug all \
+          --hidden-import=firebase_admin \
+          --hidden-import=PyQt6 \
+          --hidden-import=jdatetime \
+          --hidden-import=google.auth \
+          --hidden-import=google.cloud \
+          --hidden-import=google.cloud.firestore \
+          --hidden-import=google.cloud.storage \
+          --hidden-import=google.oauth2 \
+          --hidden-import=PyQt6.QtCore \
+          --hidden-import=PyQt6.QtGui \
+          --hidden-import=PyQt6.QtWidgets \
+          --hidden-import=PyQt6.QtWebEngineWidgets \
+          --hidden-import=PyQt6.QtWebEngineCore \
+          --hidden-import=google.auth.transport.requests \
+          --hidden-import=httpx \
+          --hidden-import=grpc \
+          --hidden-import=cryptography \
+          main.py
 
       - name: Upload EXE as artifact
         uses: actions/upload-artifact@v4
