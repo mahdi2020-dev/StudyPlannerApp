@@ -76,3 +76,4 @@ pyinstaller
 supabase
 supabase
 supabase
+supabase

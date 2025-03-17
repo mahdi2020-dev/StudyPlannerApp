@@ -98,13 +98,58 @@ class SupabaseManager:
             return None
             
         try:
-            response = self.client.table('users').select('*').eq('id', user_id).execute()
-            if response.data and len(response.data) > 0:
-                return response.data[0]
+            # First try to get user data from the auth.users metadata
+            user = self.client.auth.admin.get_user_by_id(user_id)
+            if user and user.user:
+                # If metadata doesn't exist or we need additional fields, try to get from custom users table
+                try:
+                    response = self.client.from_('users').select('*').eq('id', user_id).execute()
+                    if response.data and len(response.data) > 0:
+                        return response.data[0]
+                
+                    # If not in custom table but exists in auth, create entry in custom table
+                    user_data = {
+                        'id': user_id,
+                        'email': user.user.email,
+                        'name': user.user.user_metadata.get('name', 'User'),
+                        'is_guest': False
+                    }
+                    self.create_user(user_data)
+                    return user_data
+                except Exception as table_error:
+                    # If custom table doesn't exist yet, return basic user data from auth
+                    logger.warning(f"Custom users table error: {str(table_error)}")
+                    return {
+                        'id': user_id,
+                        'email': user.user.email, 
+                        'name': user.user.user_metadata.get('name', 'User'),
+                        'is_guest': False
+                    }
             return None
         except Exception as e:
             logger.error(f"Error getting user {user_id}: {str(e)}")
             return None
+            
+    def create_user(self, user_data: Dict) -> bool:
+        """
+        Create user in custom users table
+        
+        Args:
+            user_data (Dict): User data to create
+            
+        Returns:
+            bool: Success status
+        """
+        if not self.client:
+            return False
+            
+        try:
+            # Try to insert into custom users table
+            response = self.client.from_('users').insert(user_data).execute()
+            return len(response.data) > 0
+        except Exception as e:
+            logger.error(f"Error creating user: {str(e)}")
+            return False
 
     def get_user_by_email(self, email: str) -> Optional[Dict]:
         """
@@ -120,9 +165,44 @@ class SupabaseManager:
             return None
             
         try:
-            response = self.client.table('users').select('*').eq('email', email).execute()
-            if response.data and len(response.data) > 0:
-                return response.data[0]
+            # First try to get from auth user
+            response = self.client.auth.admin.list_users()
+            if response and response.users:
+                for auth_user in response.users:
+                    if auth_user.email and auth_user.email.lower() == email.lower():
+                        # User found in auth, try to get additional data from custom table
+                        try:
+                            table_response = self.client.from_('users').select('*').eq('email', email).execute()
+                            if table_response.data and len(table_response.data) > 0:
+                                return table_response.data[0]
+                            
+                            # If not found in custom table, create an entry
+                            user_data = {
+                                'id': auth_user.id,
+                                'email': auth_user.email,
+                                'name': auth_user.user_metadata.get('name', 'User'),
+                                'is_guest': False
+                            }
+                            self.create_user(user_data)
+                            return user_data
+                        except Exception as table_error:
+                            # Return basic user data
+                            logger.warning(f"Custom users table error: {str(table_error)}")
+                            return {
+                                'id': auth_user.id,
+                                'email': auth_user.email,
+                                'name': auth_user.user_metadata.get('name', 'User'),
+                                'is_guest': False
+                            }
+            
+            # Fallback to directly query the custom table
+            try:
+                response = self.client.from_('users').select('*').eq('email', email).execute()
+                if response.data and len(response.data) > 0:
+                    return response.data[0]
+            except Exception as e:
+                logger.warning(f"Fallback query error: {str(e)}")
+                
             return None
         except Exception as e:
             logger.error(f"Error getting user by email {email}: {str(e)}")
@@ -148,7 +228,7 @@ class SupabaseManager:
             data['user_id'] = user_id
             
             # Insert data into the table
-            response = self.client.table(collection).insert(data).execute()
+            response = self.client.from_(collection).insert(data).execute()
             return bool(response.data)
         except Exception as e:
             logger.error(f"Error adding user data to {collection}: {str(e)}")
@@ -170,7 +250,7 @@ class SupabaseManager:
             return []
             
         try:
-            response = self.client.table(collection) \
+            response = self.client.from_(collection) \
                 .select('*') \
                 .eq('user_id', user_id) \
                 .order('created_at', desc=True) \
