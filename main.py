@@ -502,7 +502,9 @@ def run_replit_web_preview():
             if 'error' in query_params:
                 error_code = query_params['error'][0]
                 if error_code == 'email-not-verified':
-                    show_error = 'لطفاً ابتدا ایمیل خود را تایید کنید.'
+                    # Removed email verification requirement
+                    # show_error = 'لطفاً ابتدا ایمیل خود را تایید کنید.'
+                    pass
                 elif error_code == 'auth/invalid-credentials':
                     show_error = 'نام کاربری یا رمز عبور اشتباه است.'
                 else:
@@ -547,11 +549,14 @@ def run_replit_web_preview():
             
             try {
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                // Removed email verification check
+                /* 
                 if (!userCredential.user.emailVerified) {
                     errorElement.textContent = 'لطفاً ابتدا ایمیل خود را تایید کنید.';
                     errorElement.style.display = 'block';
                     return;
                 }
+                */
                 window.location.href = '/dashboard';
             } catch (error) {
                 errorElement.textContent = 'نام کاربری یا رمز عبور اشتباه است.';
@@ -751,7 +756,8 @@ def run_replit_web_preview():
         
         <div class="auth-tabs">
             <div class="auth-tab active" id="login-tab">ورود</div>
-            <div class="auth-tab" id="register-tab">ثبت نام</div>
+            <!-- Hide registration tab -->
+            <div class="auth-tab" id="register-tab" style="display: none;">ثبت نام</div>
             <div class="auth-tab" id="activate-tab" style="display: none;">فعال‌سازی</div>
         </div>
         
@@ -769,8 +775,9 @@ def run_replit_web_preview():
             
             <button type="submit" class="neon-button">ورود</button>
             
+            <!-- Removed registration link -->
             <div class="form-footer">
-                حساب کاربری ندارید؟ <a href="#" id="switch-to-register">ثبت نام کنید</a>
+                برای ثبت نام با مدیر سیستم تماس بگیرید
             </div>
         </form>
         
@@ -887,8 +894,11 @@ def run_replit_web_preview():
             }
             
             // Event listeners
-            registerTab.addEventListener('click', showRegisterForm);
             loginTab.addEventListener('click', showLoginForm);
+            
+            // Remove registration related elements and listeners
+            /*
+            registerTab.addEventListener('click', showRegisterForm);
             activateTab.addEventListener('click', showActivateForm);
             switchToRegister.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -901,6 +911,7 @@ def run_replit_web_preview():
             if (resendCodeLink) {
                 resendCodeLink.addEventListener('click', handleResendCode);
             }
+            */
             
             // Guest Login button handler
             if (guestLoginBtn) {
