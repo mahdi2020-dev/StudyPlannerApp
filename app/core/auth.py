@@ -367,6 +367,62 @@ class AuthService:
             logger.error(f"Error getting user by email: {str(e)}")
             return None
     
+    # Compatibility methods for PyQt UI
+    def login(self, email: str, password: str):
+        """Compatibility method for desktop UI
+        
+        Args:
+            email (str): User's email
+            password (str): Plain text password
+            
+        Returns:
+            User: User object if login successful, None otherwise
+        """
+        success, result = self.login_user(email, password)
+        if success:
+            from app.models.user import User
+            return User(id=result, username=email)
+        return None
+    
+    def user_exists(self, email: str) -> bool:
+        """Check if a user exists by email
+        
+        Args:
+            email (str): User email
+            
+        Returns:
+            bool: True if user exists, False otherwise
+        """
+        user = self.get_user_by_email(email)
+        return user is not None
+    
+    def register(self, email: str, password: str, name: str = None) -> object:
+        """Register a new user (compatibility method)
+        
+        Args:
+            email (str): User's email
+            password (str): Plain text password
+            name (str, optional): User's name, defaults to email if not provided
+            
+        Returns:
+            User: User object if registration successful, None otherwise
+        """
+        if name is None:
+            name = email.split('@')[0]
+            
+        success, result = self.register_user(email, password, name)
+        if success:
+            # For compatibility, we treat the activation code as a successful registration
+            # and auto-activate the account
+            self.verify_activation(email, result)
+            
+            # Get the user ID of the newly created account
+            user = self.get_user_by_email(email)
+            if user:
+                from app.models.user import User
+                return User(id=user['id'], username=email)
+        return None
+    
     def change_password(self, user_id: str, current_password: str, new_password: str) -> bool:
         """Change a user's password
         
