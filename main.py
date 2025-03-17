@@ -832,80 +832,36 @@ def run_replit_web_preview():
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const loginTab = document.getElementById('login-tab');
-            const registerTab = document.getElementById('register-tab');
-            const activateTab = document.getElementById('activate-tab');
             const loginForm = document.getElementById('login-form');
-            const registerForm = document.getElementById('register-form');
-            const activateForm = document.getElementById('activate-form');
-            const resendForm = document.getElementById('resend-form');
-            const switchToRegister = document.getElementById('switch-to-register');
-            const switchToLogin = document.getElementById('switch-to-login');
-            const resendCodeLink = document.getElementById('resend-code');
             const guestLoginBtn = document.getElementById('guest-login-btn');
             
-            // Switch to register tab/form
-            function showRegisterForm() {
-                loginTab.classList.remove('active');
-                registerTab.classList.add('active');
-                activateTab.classList.remove('active');
-                loginForm.style.display = 'none';
-                registerForm.style.display = 'block';
-                activateForm.style.display = 'none';
-            }
+            // Show error messages from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
             
-            // Switch to login tab/form
-            function showLoginForm() {
-                registerTab.classList.remove('active');
-                loginTab.classList.add('active');
-                activateTab.classList.remove('active');
-                registerForm.style.display = 'none';
-                loginForm.style.display = 'block';
-                activateForm.style.display = 'none';
-            }
-            
-            // Switch to activate tab/form
-            function showActivateForm() {
-                loginTab.classList.remove('active');
-                registerTab.classList.remove('active');
-                activateTab.classList.add('active');
-                activateTab.style.display = 'block';
-                loginForm.style.display = 'none';
-                registerForm.style.display = 'none';
-                activateForm.style.display = 'block';
-            }
-            
-            // Event to handle resend code click
-            function handleResendCode(e) {
-                e.preventDefault();
-                const email = document.getElementById('activate-email').value;
-                if (email) {
-                    document.getElementById('resend-email').value = email;
-                    resendForm.submit();
-                } else {
-                    alert('لطفاً ایمیل خود را وارد کنید.');
+            if (error) {
+                const errorElement = document.getElementById('login-error');
+                if (errorElement) {
+                    let errorMessage = '';
+                    
+                    switch (error) {
+                        case 'auth/invalid-credentials':
+                            errorMessage = 'نام کاربری یا رمز عبور اشتباه است.';
+                            break;
+                        case 'incomplete':
+                            errorMessage = 'لطفا ایمیل و رمز عبور را وارد کنید.';
+                            break;
+                        case 'supabase-error':
+                            errorMessage = 'خطا در ارتباط با سرور. لطفا بعدا تلاش کنید.';
+                            break;
+                        default:
+                            errorMessage = 'خطایی رخ داده است. لطفا دوباره تلاش کنید.';
+                    }
+                    
+                    errorElement.textContent = errorMessage;
+                    errorElement.style.display = 'block';
                 }
             }
-            
-            // Event listeners
-            loginTab.addEventListener('click', showLoginForm);
-            
-            // Remove registration related elements and listeners
-            /*
-            registerTab.addEventListener('click', showRegisterForm);
-            activateTab.addEventListener('click', showActivateForm);
-            switchToRegister.addEventListener('click', function(e) {
-                e.preventDefault();
-                showRegisterForm();
-            });
-            switchToLogin.addEventListener('click', function(e) {
-                e.preventDefault();
-                showLoginForm();
-            });
-            if (resendCodeLink) {
-                resendCodeLink.addEventListener('click', handleResendCode);
-            }
-            */
             
             // Guest Login button handler
             if (guestLoginBtn) {
@@ -914,108 +870,22 @@ def run_replit_web_preview():
                 });
             }
             
-            // URL parameters handling for error messages
-            const urlParams = new URLSearchParams(window.location.search);
-            const loginError = urlParams.get('login_error');
-            const registerError = urlParams.get('register_error');
-            const activationError = urlParams.get('activation_error');
-            const resendError = urlParams.get('resend_error');
-            const registered = urlParams.get('registered');
-            const activated = urlParams.get('activated');
-            const resendSuccess = urlParams.get('resend');
-            const email = urlParams.get('email');
-            const code = urlParams.get('code');
-            
-            // Check if we need to show the activation form
-            if (loginError === 'not_activated' || activationError || resendError || 
-                registered === 'success' || resendSuccess === 'success') {
-                showActivateForm();
-                
-                // Prefill the email field if provided
-                if (email) {
-                    document.getElementById('activate-email').value = email;
-                }
-                
-                // Prefill the activation code if provided
-                if (code) {
-                    document.getElementById('activate-code').value = code;
-                }
-                
-                // Show appropriate error messages
-                if (activationError) {
-                    const errorElem = document.getElementById('activate-error');
-                    if (activationError === 'invalid') {
-                        errorElem.textContent = 'کد فعال‌سازی نامعتبر است.';
-                    } else if (activationError === 'expired') {
-                        errorElem.textContent = 'کد فعال‌سازی منقضی شده است. لطفاً درخواست کد جدید کنید.';
-                    } else if (activationError === 'incomplete') {
-                        errorElem.textContent = 'لطفاً ایمیل و کد فعال‌سازی را وارد کنید.';
-                    } else {
-                        errorElem.textContent = 'خطا در فعال‌سازی حساب کاربری.';
+            // Login form validation
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    const email = document.getElementById('login-email').value;
+                    const password = document.getElementById('login-password').value;
+                    const errorElement = document.getElementById('login-error');
+                    
+                    if (!email || !password) {
+                        e.preventDefault();
+                        errorElement.textContent = 'لطفا ایمیل و رمز عبور را وارد کنید.';
+                        errorElement.style.display = 'block';
+                        return false;
                     }
-                    errorElem.style.display = 'block';
-                }
-                
-                if (resendError) {
-                    const errorElem = document.getElementById('activate-error');
-                    errorElem.textContent = 'خطا در ارسال مجدد کد فعال‌سازی. لطفاً دوباره تلاش کنید.';
-                    errorElem.style.display = 'block';
-                }
-                
-                if (resendSuccess === 'success') {
-                    const errorElem = document.getElementById('activate-error');
-                    errorElem.textContent = 'کد فعال‌سازی جدید ارسال شد.';
-                    errorElem.style.display = 'block';
-                    errorElem.style.color = '#00ffaa';
-                }
-                
-                if (registered === 'success') {
-                    const errorElem = document.getElementById('activate-error');
-                    errorElem.textContent = 'ثبت نام با موفقیت انجام شد. لطفاً حساب کاربری خود را با کد ارسال شده به ایمیل‌تان فعال کنید.';
-                    errorElem.style.display = 'block';
-                    errorElem.style.color = '#00ffaa';
-                }
-                
-                if (loginError === 'not_activated') {
-                    const errorElem = document.getElementById('activate-error');
-                    errorElem.textContent = 'حساب کاربری شما هنوز فعال نشده است. لطفاً با استفاده از کد ارسال شده به ایمیل‌تان، آن را فعال کنید.';
-                    errorElem.style.display = 'block';
-                }
-            } else {
-                // Handle standard login/register errors
-                if (loginError) {
-                    const errorElem = document.getElementById('login-error');
-                    if (loginError === 'invalid') {
-                        errorElem.textContent = 'ایمیل یا رمز عبور اشتباه است.';
-                    } else if (loginError === 'inactive') {
-                        errorElem.textContent = 'حساب کاربری غیرفعال است.';
-                    } else if (loginError === 'incomplete') {
-                        errorElem.textContent = 'لطفاً ایمیل و رمز عبور را وارد کنید.';
-                    } else {
-                        errorElem.textContent = 'خطا در ورود. لطفاً دوباره تلاش کنید.';
-                    }
-                    errorElem.style.display = 'block';
-                }
-                
-                if (registerError) {
-                    showRegisterForm();
-                    const errorElem = document.getElementById('register-error');
-                    if (registerError === 'exists') {
-                        errorElem.textContent = 'این ایمیل قبلاً ثبت شده است.';
-                    } else if (registerError === 'incomplete') {
-                        errorElem.textContent = 'لطفاً تمام فیلدها را پر کنید.';
-                    } else {
-                        errorElem.textContent = 'خطا در ثبت نام. لطفاً دوباره تلاش کنید.';
-                    }
-                    errorElem.style.display = 'block';
-                }
-            }
-            
-            if (activated === 'success') {
-                const errorElem = document.getElementById('login-error');
-                errorElem.textContent = 'حساب کاربری شما با موفقیت فعال شد. اکنون می‌توانید وارد شوید.';
-                errorElem.style.display = 'block';
-                errorElem.style.color = '#00ffaa';
+                    
+                    return true;
+                });
             }
         });
     </script>
