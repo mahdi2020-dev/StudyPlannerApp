@@ -87,18 +87,18 @@ class LoginWindow(QWidget):
         self.remember_me = QCheckBox("مرا به خاطر بسپار")
         self.remember_me.setObjectName("rememberMe")
         
-        # Login and register buttons
+        # Login and guest login buttons
         buttons_layout = QHBoxLayout()
         
         self.login_btn = NeonButton("ورود")
         self.login_btn.clicked.connect(self.handle_login)
         
-        self.register_btn = NeonButton("ثبت نام")
-        self.register_btn.setColor(QColor(0, 170, 255))
-        self.register_btn.clicked.connect(self.handle_register)
+        self.guest_btn = NeonButton("ورود به عنوان مهمان")
+        self.guest_btn.setColor(QColor(0, 170, 255))
+        self.guest_btn.clicked.connect(self.handle_guest_login)
         
         buttons_layout.addWidget(self.login_btn)
-        buttons_layout.addWidget(self.register_btn)
+        buttons_layout.addWidget(self.guest_btn)
         
         # Add widgets to form layout
         form_layout.addWidget(login_title)
@@ -125,44 +125,56 @@ class LoginWindow(QWidget):
             return
         
         try:
-            user = self.auth_service.login(username, password)
-            if user:
-                logger.info(f"User {username} logged in successfully")
-                self.open_main_window(user)
+            # Use the updated auth service with Supabase
+            success, session_id, error_message = self.auth_service.login(username, password)
+            
+            if success and session_id:
+                # Get user from session
+                user = self.auth_service.get_user_by_session(session_id)
+                if user:
+                    logger.info(f"User {username} logged in successfully")
+                    self.open_main_window(user)
+                else:
+                    QMessageBox.warning(self, "خطا", "خطا در دریافت اطلاعات کاربری.")
             else:
-                QMessageBox.warning(self, "خطا", "نام کاربری یا رمز عبور اشتباه است.")
+                error_msg = error_message if error_message else "نام کاربری یا رمز عبور اشتباه است."
+                QMessageBox.warning(self, "خطا", error_msg)
         except Exception as e:
             logger.error(f"Login error: {str(e)}")
             QMessageBox.critical(self, "خطای سیستم", f"خطا در ورود: {str(e)}")
     
     @pyqtSlot()
-    def handle_register(self):
-        """Handle register button click"""
-        username = self.username_input.text().strip()
-        password = self.password_input.text().strip()
-        
-        if not username or not password:
-            QMessageBox.warning(self, "خطا", "لطفا نام کاربری و رمز عبور را وارد کنید.")
-            return
-            
-        if len(password) < 6:
-            QMessageBox.warning(self, "خطا", "رمز عبور باید حداقل ۶ کاراکتر باشد.")
-            return
-            
+    def handle_guest_login(self):
+        """Handle guest login button click"""
         try:
-            if self.auth_service.user_exists(username):
-                QMessageBox.warning(self, "خطا", "این نام کاربری قبلا ثبت شده است.")
-                return
-                
-            user = self.auth_service.register(username, password)
-            if user:
-                QMessageBox.information(self, "ثبت نام موفق", "ثبت نام با موفقیت انجام شد. اکنون می‌توانید وارد شوید.")
-                logger.info(f"User {username} registered successfully")
+            # Use auth service to create a guest session
+            success, session_id, guest_user = self.auth_service.create_guest_session()
+            
+            if success and guest_user:
+                logger.info("Guest user logged in successfully")
+                self.open_main_window(guest_user)
             else:
-                QMessageBox.warning(self, "خطا", "خطا در ثبت نام. لطفا دوباره تلاش کنید.")
+                raise Exception("Failed to create guest session")
+                
         except Exception as e:
-            logger.error(f"Registration error: {str(e)}")
-            QMessageBox.critical(self, "خطای سیستم", f"خطا در ثبت نام: {str(e)}")
+            logger.error(f"Guest login error: {str(e)}")
+            
+            # Fallback to simple guest login
+            from app.core.auth import User
+            import time
+            import uuid
+            
+            # Create a simple guest user
+            guest_id = f"guest-{uuid.uuid4()}"
+            guest_user = User(
+                user_id=guest_id,
+                name="کاربر مهمان",
+                email=f"{guest_id}@guest.persianlifemanager.app",
+                is_guest=True
+            )
+            
+            logger.info("Fallback guest user created")
+            self.open_main_window(guest_user)
     
     def open_main_window(self, user):
         """Open the main application window"""
