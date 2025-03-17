@@ -1,0 +1,75 @@
+Cannot read properties of null (reading 'addEventListener')
+at https://5d1c5ef1-6502-4722-af09-bae7e15a9806-00-3lxqhu7d7mesq.janeway.replit.dev/login:13:46
+ChatGPT said:
+خطای "Cannot read properties of null (reading 'addEventListener')" معمولاً به این معنیه که داری روی یک المنتی که در DOM وجود نداره addEventListener اجرا می‌کنی. یعنی جاوااسکریپت نمی‌تونه اون المنت رو پیدا کنه.
+
+✅ راه‌حل‌های پیشنهادی
+🔹 ۱. مطمئن شو المنت موردنظر در DOM هست
+احتمالاً داری روی المنت null که در صفحه وجود نداره، addEventListener می‌زنی.
+
+📌 مثال کد مشکل‌دار:
+
+javascript
+Copy
+Edit
+document.getElementById("login-btn").addEventListener("click", function() {
+    console.log("Login clicked!");
+});
+🚨 اگر المنت id="login-btn" توی HTML نباشه، این کد خطا میده!
+
+📌 رفع مشکل: چک کن که المنت در HTML وجود داشته باشه.
+
+html
+Copy
+Edit
+<button id="login-btn">ورود</button>
+🔹 ۲. صبر کن تا DOM کامل لود بشه
+اگه جاوااسکریپت زودتر از HTML لود بشه، المنت هنوز در صفحه نیست و null برمی‌گردونه.
+📌 پس addEventListener رو داخل DOMContentLoaded بزار:
+
+javascript
+Copy
+Edit
+document.addEventListener("DOMContentLoaded", function() {
+    let loginButton = document.getElementById("login-btn");
+    if (loginButton) {
+        loginButton.addEventListener("click", function() {
+            console.log("✅ Login clicked!");
+        });
+    } else {
+        console.error("❌ دکمه ورود پیدا نشد!");
+    }
+});
+✅ این باعث میشه که جاوااسکریپت فقط بعد از لود کامل صفحه اجرا بشه.
+
+🔹 ۳. بررسی کن که getElementById مقدار null نده
+قبل از اضافه کردن addEventListener، مقدار المنت رو چک کن:
+
+javascript
+Copy
+Edit
+let loginButton = document.getElementById("login-btn");
+
+if (loginButton) {
+    loginButton.addEventListener("click", function() {
+        console.log("✅ Login clicked!");
+    });
+} else {
+    console.error("❌ دکمه ورود پیدا نشد! بررسی کن که id درست باشه.");
+}
+🚨 اگه loginButton مقدار null داشت، یعنی id="login-btn" توی صفحه نیست.
+
+🔹 ۴. چک کن که اسکریپت بعد از المنت‌ها لود بشه
+ممکنه جاوااسکریپت در <head> قرار داشته باشه و قبل از لود کامل <body> اجرا بشه.
+📌 کد اسکریپت رو به انتهای <body> منتقل کن:
+
+html
+Copy
+Edit
+<body>
+    <button id="login-btn">ورود</button>
+    
+    <script src="script.js"></script>
+</body>
+✅ این باعث میشه که اسکریپت بعد از بارگذاری المنت‌ها اجرا بشه.
+

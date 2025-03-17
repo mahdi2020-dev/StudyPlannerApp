@@ -784,18 +784,20 @@ def run_replit_web_preview():
     </div>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const loginForm = document.getElementById('login-form');
-            const guestLoginBtn = document.getElementById('guest-login-btn');
+        // اجرای اسکریپت پس از لود کامل صفحه
+        window.onload = function() {
+            // تعریف متغیرها با بررسی وجود المنت ها
+            var loginForm = document.getElementById('login-form');
+            var guestLoginBtn = document.getElementById('guest-login-btn');
             
-            // Show error messages from URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            const error = urlParams.get('error');
+            // نمایش پیام های خطا از پارامترهای URL
+            var urlParams = new URLSearchParams(window.location.search);
+            var error = urlParams.get('error');
             
             if (error) {
-                const errorElement = document.getElementById('login-error');
+                var errorElement = document.getElementById('login-error');
                 if (errorElement) {
-                    let errorMessage = '';
+                    var errorMessage = '';
                     
                     switch (error) {
                         case 'auth/invalid-credentials':
@@ -816,31 +818,34 @@ def run_replit_web_preview():
                 }
             }
             
-            // Guest Login button handler
+            // اضافه کردن کلیک هندلر برای دکمه ورود مهمان
             if (guestLoginBtn) {
                 guestLoginBtn.addEventListener('click', function() {
                     window.location.href = '/guest-login';
                 });
             }
             
-            // Login form validation
+            // بررسی فرم لاگین
             if (loginForm) {
                 loginForm.addEventListener('submit', function(e) {
-                    const email = document.getElementById('login-email').value;
-                    const password = document.getElementById('login-password').value;
-                    const errorElement = document.getElementById('login-error');
+                    var email = document.getElementById('login-email');
+                    var password = document.getElementById('login-password');
+                    var errorElement = document.getElementById('login-error');
                     
-                    if (!email || !password) {
+                    // اگر ایمیل یا پسورد خالی باشند
+                    if (!email || !password || !email.value || !password.value) {
                         e.preventDefault();
-                        errorElement.textContent = 'لطفا ایمیل و رمز عبور را وارد کنید.';
-                        errorElement.style.display = 'block';
+                        if (errorElement) {
+                            errorElement.textContent = 'لطفا ایمیل و رمز عبور را وارد کنید.';
+                            errorElement.style.display = 'block';
+                        }
                         return false;
                     }
                     
                     return true;
                 });
             }
-        });
+        };
     </script>
 </body>
 </html>
@@ -959,14 +964,22 @@ def run_replit_web_preview():
     </div>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const chatContainer = document.getElementById('chat-container');
-            const userInput = document.getElementById('user-input');
-            const sendButton = document.getElementById('send-button');
-            let chatHistory = [];
+        // اجرای اسکریپت پس از لود کامل صفحه
+        window.onload = function() {
+            // تعریف متغیرها با بررسی وجود المنت ها
+            var chatContainer = document.getElementById('chat-container');
+            var userInput = document.getElementById('user-input');
+            var sendButton = document.getElementById('send-button');
+            var chatHistory = [];
+            
+            // بررسی وجود المنت‌ها قبل از اضافه کردن ایونت‌ها
+            if (!chatContainer || !userInput || !sendButton) {
+                console.error("برخی از المنت‌های لازم در صفحه یافت نشدند");
+                return;
+            }
             
             function addMessage(content, isUser) {
-                const messageDiv = document.createElement('div');
+                var messageDiv = document.createElement('div');
                 messageDiv.classList.add('message');
                 messageDiv.classList.add(isUser ? 'user-message' : 'ai-message');
                 messageDiv.textContent = content;
@@ -979,7 +992,7 @@ def run_replit_web_preview():
                 addMessage(message, true);
                 
                 try {
-                    const response = await fetch('/api/chat', {
+                    var response = await fetch('/api/chat', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -990,7 +1003,7 @@ def run_replit_web_preview():
                         })
                     });
                     
-                    const data = await response.json();
+                    var data = await response.json();
                     
                     if (data.error) {
                         addMessage('متأسفانه خطایی رخ داد: ' + data.error, false);
@@ -1013,8 +1026,9 @@ def run_replit_web_preview():
                 }
             }
             
+            // اضافه کردن ایونت‌ها
             sendButton.addEventListener('click', function() {
-                const message = userInput.value;
+                var message = userInput.value;
                 if (message.trim()) {
                     sendMessage(message);
                     userInput.value = '';
@@ -1023,14 +1037,14 @@ def run_replit_web_preview():
             
             userInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
-                    const message = userInput.value;
+                    var message = userInput.value;
                     if (message.trim()) {
                         sendMessage(message);
                         userInput.value = '';
                     }
                 }
             });
-        });
+        };
     </script>
 </body>
 </html>
