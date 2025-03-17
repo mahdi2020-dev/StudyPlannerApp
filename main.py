@@ -109,10 +109,8 @@ def run_replit_web_preview():
     
     # Initialize the auth service
     from app.core.auth import AuthService
-    auth_service = AuthService(db_path)
-    if not auth_service.initialize():
-        logger.error("Failed to initialize Auth Service")
-        return
+    auth_service = AuthService()
+    auth_service.initialize()
     
     # Initialize AI service
     ai_service = AIService()
@@ -1223,12 +1221,15 @@ def run_replit_web_preview():
                 
             try:
                 # Use the auth service to login
-                success, result = auth_service.login(email, password)
+                success, session_id, error_message = auth_service.login(email, password)
                 
-                if success:
-                    # User is authenticated, set session
-                    current_user["user_id"] = result.id
-                    current_user["username"] = result.name
+                if success and session_id:
+                    # Get user details from session
+                    user = auth_service.get_user_by_session(session_id)
+                    if user:
+                        # User is authenticated, set session
+                        current_user["user_id"] = user.id
+                        current_user["username"] = user.name
                     
                     # Redirect to dashboard
                     self.send_redirect('/dashboard')
@@ -1349,14 +1350,18 @@ def run_replit_web_preview():
         def handle_guest_login(self):
             """Handle guest login request using Supabase guest account"""
             try:
-                # Use the auth service to create a guest user
-                guest_user = auth_service.create_guest_user()
+                # Use the auth service to create a guest session
+                success, session_id, guest_user = auth_service.create_guest_session()
                 
-                # Set session for guest user
-                current_user["user_id"] = guest_user.id
-                current_user["username"] = guest_user.name
-                
-                logger.info("Guest user logged in")
+                if success and guest_user:
+                    # Set session for guest user
+                    current_user["user_id"] = guest_user.id
+                    current_user["username"] = guest_user.name
+                    
+                    logger.info("Guest user logged in")
+                else:
+                    raise Exception("Failed to create guest session")
+                    
                 self.send_redirect('/dashboard')
             except Exception as e:
                 logger.error(f"Guest login error: {str(e)}")

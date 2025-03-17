@@ -1,151 +1,136 @@
 """
 Supabase Client for Persian Life Manager Application
-Handles database operations and authentication with Supabase
 """
-
 import os
-import json
 import logging
-from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any, Union
+import json
+from typing import Dict, List, Optional, Any, Union
 
-# Import the supabase-py client
 try:
     from supabase import create_client, Client
 except ImportError:
-    logging.error("Supabase client not installed. Run 'pip install supabase'")
-    raise
+    # Will be handled in initialize()
+    pass
 
-# Set up logging
+# Setup logger
 logger = logging.getLogger(__name__)
 
 class SupabaseManager:
-    """Supabase database and authentication manager"""
-    
+    """
+    Singleton manager for Supabase client
+    """
     _instance = None
-    
+    _client = None
+    _initialized = False
+
     def __new__(cls):
         """Singleton pattern to ensure only one Supabase connection"""
         if cls._instance is None:
             cls._instance = super(SupabaseManager, cls).__new__(cls)
-            cls._instance.supabase = None
-            cls._instance.initialized = False
         return cls._instance
-    
-    def initialize(self):
-        """Initialize Supabase connection"""
-        if self.initialized:
-            return True
+
+    def initialize(self) -> bool:
+        """
+        Initialize Supabase client connection
         
+        Returns:
+            bool: True if initialization was successful, False otherwise
+        """
+        if self._initialized:
+            return True
+            
         try:
-            # Get environment variables
-            supabase_url = os.environ.get("SUPABASE_URL")
-            supabase_key = os.environ.get("SUPABASE_KEY")
+            # Get Supabase credentials from environment
+            supabase_url = os.environ.get('SUPABASE_URL')
+            supabase_key = os.environ.get('SUPABASE_KEY')
             
             if not supabase_url or not supabase_key:
-                logger.error("SUPABASE_URL or SUPABASE_KEY environment variables not set")
+                logger.error("Supabase credentials not found in environment variables")
                 return False
-            
-            # Initialize Supabase client
-            self.supabase = create_client(supabase_url, supabase_key)
-            self.initialized = True
+                
+            # Create Supabase client
+            self._client = create_client(supabase_url, supabase_key)
+            self._initialized = True
             logger.info("Supabase client initialized successfully")
             return True
-        
+            
+        except ImportError:
+            logger.error("Supabase Python package not installed. Install with 'pip install supabase'")
+            return False
         except Exception as e:
-            logger.error(f"Error initializing Supabase: {str(e)}")
+            logger.error(f"Error initializing Supabase client: {str(e)}")
             return False
     
-    def is_initialized(self) -> bool:
-        """Check if Supabase is initialized"""
-        return self.initialized
-    
-    def login_user(self, email: str, password: str) -> Tuple[bool, Union[Dict[str, Any], str]]:
-        """Login a user
-        
-        Args:
-            email (str): User email
-            password (str): User password
-            
-        Returns:
-            tuple: (success, user_data or error_message)
+    @property
+    def client(self) -> Optional[Client]:
         """
-        if not self.is_initialized():
-            return False, "Supabase not initialized"
+        Get the Supabase client instance
         
-        try:
-            # Attempt to sign in
-            response = self.supabase.auth.sign_in_with_password({
-                "email": email,
-                "password": password
-            })
-            
-            # Return user data
-            if response.user:
-                user_data = {
-                    "id": response.user.id,
-                    "email": response.user.email,
-                    "created_at": response.user.created_at,
-                    "last_sign_in_at": response.user.last_sign_in_at
-                }
-                return True, user_data
-            else:
-                return False, "Invalid email or password"
-        
-        except Exception as e:
-            logger.error(f"Login error: {str(e)}")
-            return False, str(e)
-    
-    def user_exists(self, email: str) -> bool:
-        """Check if a user exists
-        
-        Args:
-            email (str): User email
-            
         Returns:
-            bool: True if the user exists, False otherwise
+            Optional[Client]: The Supabase client or None if not initialized
         """
-        if not self.is_initialized():
-            return False
-        
-        try:
-            # Query the users table
-            response = self.supabase.table("user_profiles").select("email").eq("email", email).execute()
-            
-            # Check if any rows were returned
-            return len(response.data) > 0
-        
-        except Exception as e:
-            logger.error(f"Error checking if user exists: {str(e)}")
-            return False
-    
-    def get_user_data(self, user_id: str, collection: str) -> Optional[Dict[str, Any]]:
-        """Get user data from a collection
-        
-        Args:
-            user_id (str): User ID
-            collection (str): Collection name
-            
-        Returns:
-            dict: User data or None
-        """
-        if not self.is_initialized():
-            return None
-        
-        try:
-            response = self.supabase.table(collection).select("*").eq("user_id", user_id).execute()
-            
-            if response.data:
-                return response.data
-            else:
+        if not self._initialized:
+            success = self.initialize()
+            if not success:
                 return None
+        return self._client
+
+    def is_initialized(self) -> bool:
+        """
+        Check if Supabase client is initialized
         
+        Returns:
+            bool: True if initialized, False otherwise
+        """
+        return self._initialized
+
+    def get_user(self, user_id: str) -> Optional[Dict]:
+        """
+        Get user data by ID
+        
+        Args:
+            user_id (str): The user ID
+            
+        Returns:
+            Optional[Dict]: User data dictionary or None if not found
+        """
+        if not self.client:
+            return None
+            
+        try:
+            response = self.client.table('users').select('*').eq('id', user_id).execute()
+            if response.data and len(response.data) > 0:
+                return response.data[0]
+            return None
         except Exception as e:
-            logger.error(f"Error getting user data: {str(e)}")
+            logger.error(f"Error getting user {user_id}: {str(e)}")
+            return None
+
+    def get_user_by_email(self, email: str) -> Optional[Dict]:
+        """
+        Get user by email
+        
+        Args:
+            email (str): User email
+            
+        Returns:
+            Optional[Dict]: User data or None if not found
+        """
+        if not self.client:
+            return None
+            
+        try:
+            response = self.client.table('users').select('*').eq('email', email).execute()
+            if response.data and len(response.data) > 0:
+                return response.data[0]
+            return None
+        except Exception as e:
+            logger.error(f"Error getting user by email {email}: {str(e)}")
             return None
     
-    def add_user_data(self, user_id: str, collection: str, data: Dict[str, Any]) -> bool:
-        """Add user data to a collection
+    def add_user_data(self, user_id: str, collection: str, data: Dict) -> bool:
+        """
+        Add user data to a collection
         
         Args:
             user_id (str): User ID
@@ -155,80 +140,51 @@ class SupabaseManager:
         Returns:
             bool: Success status
         """
-        if not self.is_initialized():
+        if not self.client:
             return False
-        
+            
         try:
             # Add user_id to the data
-            data["user_id"] = user_id
+            data['user_id'] = user_id
             
-            # Add created_at timestamp if not present
-            if "created_at" not in data:
-                data["created_at"] = datetime.now().isoformat()
-            
-            # Insert the data
-            response = self.supabase.table(collection).insert(data).execute()
-            
-            return len(response.data) > 0
-        
+            # Insert data into the table
+            response = self.client.table(collection).insert(data).execute()
+            return bool(response.data)
         except Exception as e:
-            logger.error(f"Error adding user data: {str(e)}")
+            logger.error(f"Error adding user data to {collection}: {str(e)}")
             return False
     
-    def update_user_data(self, user_id: str, collection: str, item_id: str, data: Dict[str, Any]) -> bool:
-        """Update user data in a collection
+    def get_user_data(self, user_id: str, collection: str, limit: int = 50) -> List[Dict]:
+        """
+        Get user data from a collection
         
         Args:
             user_id (str): User ID
             collection (str): Collection name
-            item_id (str): Item ID
-            data (dict): Data to update
+            limit (int, optional): Maximum number of records to return. Defaults to 50.
             
         Returns:
-            bool: Success status
+            List[Dict]: List of user data items
         """
-        if not self.is_initialized():
-            return False
-        
+        if not self.client:
+            return []
+            
         try:
-            # Add updated_at timestamp
-            data["updated_at"] = datetime.now().isoformat()
-            
-            # Update the data
-            response = self.supabase.table(collection).update(data).eq("id", item_id).eq("user_id", user_id).execute()
-            
-            return len(response.data) > 0
-        
+            response = self.client.table(collection) \
+                .select('*') \
+                .eq('user_id', user_id) \
+                .order('created_at', desc=True) \
+                .limit(limit) \
+                .execute()
+                
+            return response.data if response.data else []
         except Exception as e:
-            logger.error(f"Error updating user data: {str(e)}")
-            return False
+            logger.error(f"Error getting user data from {collection}: {str(e)}")
+            return []
     
-    def delete_user_data(self, user_id: str, collection: str, item_id: str) -> bool:
-        """Delete user data from a collection
-        
-        Args:
-            user_id (str): User ID
-            collection (str): Collection name
-            item_id (str): Item ID
-            
-        Returns:
-            bool: Success status
+    def add_transaction(self, user_id: str, transaction_data: Dict) -> bool:
         """
-        if not self.is_initialized():
-            return False
-        
-        try:
-            # Delete the data
-            response = self.supabase.table(collection).delete().eq("id", item_id).eq("user_id", user_id).execute()
-            
-            return len(response.data) > 0
-        
-        except Exception as e:
-            logger.error(f"Error deleting user data: {str(e)}")
-            return False
-    
-    def add_transaction(self, user_id: str, transaction_data: Dict[str, Any]) -> bool:
-        """Add a financial transaction
+        Add a financial transaction
         
         Args:
             user_id (str): User ID
@@ -237,37 +193,24 @@ class SupabaseManager:
         Returns:
             bool: Success status
         """
-        return self.add_user_data(user_id, "transactions", transaction_data)
+        return self.add_user_data(user_id, 'finance_transactions', transaction_data)
     
-    def get_transactions(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
-        """Get financial transactions
+    def get_transactions(self, user_id: str, limit: int = 50) -> List[Dict]:
+        """
+        Get financial transactions
         
         Args:
             user_id (str): User ID
-            limit (int): Maximum number of transactions to return
+            limit (int, optional): Maximum number of transactions to return. Defaults to 50.
             
         Returns:
-            list: List of transactions
+            List[Dict]: List of transactions
         """
-        if not self.is_initialized():
-            return []
-        
-        try:
-            response = self.supabase.table("transactions") \
-                .select("*") \
-                .eq("user_id", user_id) \
-                .order("date", ascending=False) \
-                .limit(limit) \
-                .execute()
-            
-            return response.data
-        
-        except Exception as e:
-            logger.error(f"Error getting transactions: {str(e)}")
-            return []
+        return self.get_user_data(user_id, 'finance_transactions', limit)
     
-    def add_health_metric(self, user_id: str, metric_data: Dict[str, Any]) -> bool:
-        """Add a health metric
+    def add_health_metric(self, user_id: str, metric_data: Dict) -> bool:
+        """
+        Add a health metric
         
         Args:
             user_id (str): User ID
@@ -276,37 +219,24 @@ class SupabaseManager:
         Returns:
             bool: Success status
         """
-        return self.add_user_data(user_id, "health_metrics", metric_data)
+        return self.add_user_data(user_id, 'health_metrics', metric_data)
     
-    def get_health_metrics(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
-        """Get health metrics
+    def get_health_metrics(self, user_id: str, limit: int = 50) -> List[Dict]:
+        """
+        Get health metrics
         
         Args:
             user_id (str): User ID
-            limit (int): Maximum number of metrics to return
+            limit (int, optional): Maximum number of metrics to return. Defaults to 50.
             
         Returns:
-            list: List of health metrics
+            List[Dict]: List of health metrics
         """
-        if not self.is_initialized():
-            return []
-        
-        try:
-            response = self.supabase.table("health_metrics") \
-                .select("*") \
-                .eq("user_id", user_id) \
-                .order("date", ascending=False) \
-                .limit(limit) \
-                .execute()
-            
-            return response.data
-        
-        except Exception as e:
-            logger.error(f"Error getting health metrics: {str(e)}")
-            return []
+        return self.get_user_data(user_id, 'health_metrics', limit)
     
-    def add_calendar_event(self, user_id: str, event_data: Dict[str, Any]) -> bool:
-        """Add a calendar event
+    def add_calendar_event(self, user_id: str, event_data: Dict) -> bool:
+        """
+        Add a calendar event
         
         Args:
             user_id (str): User ID
@@ -315,31 +245,17 @@ class SupabaseManager:
         Returns:
             bool: Success status
         """
-        return self.add_user_data(user_id, "calendar_events", event_data)
+        return self.add_user_data(user_id, 'calendar_events', event_data)
     
-    def get_calendar_events(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
-        """Get calendar events
+    def get_calendar_events(self, user_id: str, limit: int = 50) -> List[Dict]:
+        """
+        Get calendar events
         
         Args:
             user_id (str): User ID
-            limit (int): Maximum number of events to return
+            limit (int, optional): Maximum number of events to return. Defaults to 50.
             
         Returns:
-            list: List of calendar events
+            List[Dict]: List of calendar events
         """
-        if not self.is_initialized():
-            return []
-        
-        try:
-            response = self.supabase.table("calendar_events") \
-                .select("*") \
-                .eq("user_id", user_id) \
-                .order("start_date", ascending=True) \
-                .limit(limit) \
-                .execute()
-            
-            return response.data
-        
-        except Exception as e:
-            logger.error(f"Error getting calendar events: {str(e)}")
-            return []
+        return self.get_user_data(user_id, 'calendar_events', limit)
