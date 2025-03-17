@@ -95,21 +95,26 @@ def run_replit_web_preview():
     from app.services.calendar_service import CalendarService
     from app.services.ai_service import AIService
     
-    # Initialize Firebase Admin SDK
-    try:
-        if not firebase_admin._apps:  # Check if not already initialized
-            cred = credentials.Certificate("serviceAccountKey.json")
-            firebase_admin.initialize_app(cred)
-            logger.info("Firebase Admin SDK initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize Firebase Admin SDK: {str(e)}")
-        return  # Exit if Firebase initialization fails
+    # Check for Supabase credentials
+    SUPABASE_URL = os.environ.get("SUPABASE_URL")
+    SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+    
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        logger.error("SUPABASE_URL or SUPABASE_KEY environment variables not set")
+        return  # Exit if Supabase credentials are missing
     
     # Initialize services
     db_path = os.path.join(Path.home(), '.persian_life_manager', 'database.db')
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     
+    # Initialize the auth service
+    from app.core.auth import AuthService
     auth_service = AuthService(db_path)
+    if not auth_service.initialize():
+        logger.error("Failed to initialize Auth Service")
+        return
+    
+    # Initialize AI service
     ai_service = AIService()
     
     # Add OpenAI API key check
@@ -1207,7 +1212,7 @@ def run_replit_web_preview():
             self.wfile.write(html_content.encode('utf-8'))
 
         def handle_login(self, form_data):
-            """Handle login form submission with Firebase"""
+            """Handle login form submission with Supabase"""
             # Get credentials from form data
             email = form_data.get('email', [''])[0]
             password = form_data.get('password', [''])[0]
@@ -1217,22 +1222,20 @@ def run_replit_web_preview():
                 return
                 
             try:
-                auth = firebase_admin.auth
-                user = auth.get_user_by_email(email)
+                # Use the auth service to login
+                success, result = auth_service.login(email, password)
                 
-                if not user.email_verified:
-                    self.send_redirect('/login?error=email-not-verified')
-                    return
+                if success:
+                    # User is authenticated, set session
+                    current_user["user_id"] = result.id
+                    current_user["username"] = result.name
+                    
+                    # Redirect to dashboard
+                    self.send_redirect('/dashboard')
+                else:
+                    # Login failed, redirect with error
+                    self.send_redirect('/login?error=auth/invalid-credentials')
                 
-                # User is verified, set session
-                current_user["user_id"] = user.uid
-                current_user["username"] = user.display_name or email.split('@')[0]
-                
-                # Redirect to dashboard
-                self.send_redirect('/dashboard')
-                
-            except firebase_admin._auth_utils.UserNotFoundError:
-                self.send_redirect('/login?error=auth/invalid-credentials')
             except Exception as e:
                 logger.error(f"Login error: {str(e)}")
                 self.send_redirect('/login?error=unknown')

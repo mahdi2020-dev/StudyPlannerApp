@@ -1,484 +1,241 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
-Authentication service for Persian Life Manager
+Authentication module for Persian Life Manager Application
+Handles user authentication and session management
 """
 
-import logging
-import hashlib
 import os
+import json
+import logging
 import secrets
 import time
-import random
-import string
-from typing import Tuple, Optional, Dict
+from typing import Dict, Optional, Tuple, Any, Union
 
-from app.core.database import DatabaseManager
+from app.core.supabase_client import SupabaseManager
 
+# Set up logging
 logger = logging.getLogger(__name__)
 
-class AuthService:
-    """Authentication service for user management and authentication"""
+class User:
+    """User class for storing user information"""
     
-    def __init__(self, db_path=None):
-        """Initialize the authentication service
-        
-        Args:
-            db_path (str, optional): Path to the database file. If None, uses default path.
-        """
-        if not db_path:
-            db_path = os.path.join(os.path.expanduser("~"), '.persian_life_manager', 'database.db')
-        
-        self.db_manager = DatabaseManager(db_path)
-        self._initialize_db()
-    
-    def _initialize_db(self):
-        """Initialize the database schema for authentication"""
-        try:
-            # Create users table if not exists
-            self.db_manager.execute_query("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    email TEXT UNIQUE,
-                    password_hash TEXT,
-                    name TEXT,
-                    salt TEXT,
-                    created_at TEXT,
-                    last_login TEXT,
-                    is_active INTEGER DEFAULT 0,
-                    activation_code TEXT,
-                    activation_expiry TEXT
-                )
-            """)
-            
-            # Create a table for pending registrations
-            self.db_manager.execute_query("""
-                CREATE TABLE IF NOT EXISTS pending_registrations (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    email TEXT UNIQUE,
-                    password_hash TEXT,
-                    name TEXT,
-                    salt TEXT,
-                    created_at TEXT,
-                    activation_code TEXT,
-                    activation_expiry TEXT
-                )
-            """)
-        except Exception as e:
-            logger.error(f"Error initializing authentication database: {str(e)}")
-            raise
-            
-    def _generate_activation_code(self):
-        """Generate a random 6-digit activation code
-        
-        Returns:
-            str: 6-digit activation code
-        """
-        return ''.join(random.choices(string.digits, k=6))
-    
-    def _hash_password(self, password: str, salt: Optional[str] = None) -> Tuple[str, str]:
-        """Hash a password with a salt
-        
-        Args:
-            password (str): Plain text password
-            salt (str, optional): Salt to use. If None, a new salt is generated.
-            
-        Returns:
-            tuple: (password_hash, salt)
-        """
-        if not salt:
-            salt = secrets.token_hex(16)
-        
-        # Use SHA-256 for password hashing
-        hash_obj = hashlib.sha256((password + salt).encode())
-        password_hash = hash_obj.hexdigest()
-        
-        return password_hash, salt
-    
-    def register_user(self, email: str, password: str, name: str) -> Tuple[bool, str]:
-        """Register a new user
-        
-        Args:
-            email (str): User's email
-            password (str): Plain text password
-            name (str): User's name
-            
-        Returns:
-            tuple: (success, user_id or error_message)
-        """
-        try:
-            # Check if email already exists in users table
-            query = "SELECT id FROM users WHERE email = ?"
-            results = self.db_manager.execute_query(query, (email,))
-            
-            if results:
-                return False, "email_exists"
-                
-            # Also check pending registrations
-            query = "SELECT id FROM pending_registrations WHERE email = ?"
-            results = self.db_manager.execute_query(query, (email,))
-            
-            # If already has a pending registration, we'll update it
-            if results:
-                # Delete the existing pending registration first
-                delete_query = "DELETE FROM pending_registrations WHERE email = ?"
-                self.db_manager.execute_update(delete_query, (email,))
-            
-            # Hash the password
-            password_hash, salt = self._hash_password(password)
-            
-            # Generate activation code
-            activation_code = self._generate_activation_code()
-            
-            # Set activation expiry (24 hours from now)
-            now = time.strftime('%Y-%m-%d %H:%M:%S')
-            expiry = time.strftime(
-                '%Y-%m-%d %H:%M:%S', 
-                time.localtime(time.time() + 24 * 60 * 60)
-            )
-            
-            # Insert into pending registrations
-            query = """
-                INSERT INTO pending_registrations (
-                    email, password_hash, name, salt, created_at, 
-                    activation_code, activation_expiry
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """
-            
-            registration_id = self.db_manager.execute_insert(
-                query, 
-                (email, password_hash, name, salt, now, activation_code, expiry)
-            )
-            
-            if not registration_id:
-                return False, "registration_failed"
-                
-            # In a real application, we would send the activation code via email
-            # For testing purposes, we'll return the activation code
-            return True, activation_code
-        except Exception as e:
-            logger.error(f"Error registering user: {str(e)}")
-            return False, "system_error"
-    
-    def verify_activation(self, email: str, activation_code: str) -> Tuple[bool, str]:
-        """Verify activation code and create the user account
-        
-        Args:
-            email (str): User email
-            activation_code (str): Activation code
-            
-        Returns:
-            tuple: (success, user_id or error_message)
-        """
-        try:
-            # Get the pending registration
-            query = """
-                SELECT * FROM pending_registrations 
-                WHERE email = ? AND activation_code = ?
-            """
-            results = self.db_manager.execute_query(query, (email, activation_code))
-            
-            if not results:
-                return False, "invalid_code"
-                
-            registration = results[0]
-            
-            # Check if code has expired
-            expiry = registration['activation_expiry']
-            now = time.strftime('%Y-%m-%d %H:%M:%S')
-            
-            if expiry < now:
-                return False, "code_expired"
-                
-            # Create the user account
-            insert_query = """
-                INSERT INTO users (
-                    email, password_hash, name, salt, created_at, last_login,
-                    is_active, activation_code, activation_expiry
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
-            
-            user_id = self.db_manager.execute_insert(
-                insert_query, 
-                (
-                    registration['email'], 
-                    registration['password_hash'],
-                    registration['name'],
-                    registration['salt'],
-                    registration['created_at'],
-                    now,  # last_login
-                    1,    # is_active
-                    None, # activation_code (set to None once verified)
-                    None  # activation_expiry (set to None once verified)
-                )
-            )
-            
-            if not user_id:
-                return False, "activation_failed"
-                
-            # Delete the pending registration
-            delete_query = "DELETE FROM pending_registrations WHERE id = ?"
-            self.db_manager.execute_update(delete_query, (registration['id'],))
-            
-            return True, str(user_id)
-        except Exception as e:
-            logger.error(f"Error verifying activation: {str(e)}")
-            return False, "system_error"
-            
-    def resend_activation_code(self, email: str) -> Tuple[bool, str]:
-        """Resend activation code for a pending registration
-        
-        Args:
-            email (str): User email
-            
-        Returns:
-            tuple: (success, activation_code or error_message)
-        """
-        try:
-            # Check if email exists in pending registrations
-            query = "SELECT id FROM pending_registrations WHERE email = ?"
-            results = self.db_manager.execute_query(query, (email,))
-            
-            if not results:
-                return False, "not_found"
-                
-            # Generate new activation code
-            activation_code = self._generate_activation_code()
-            
-            # Set new activation expiry (24 hours from now)
-            expiry = time.strftime(
-                '%Y-%m-%d %H:%M:%S', 
-                time.localtime(time.time() + 24 * 60 * 60)
-            )
-            
-            # Update the pending registration
-            update_query = """
-                UPDATE pending_registrations 
-                SET activation_code = ?, activation_expiry = ?
-                WHERE email = ?
-            """
-            
-            result = self.db_manager.execute_update(
-                update_query, (activation_code, expiry, email)
-            )
-            
-            if not result:
-                return False, "update_failed"
-                
-            # In a real application, we would send the activation code via email
-            # For testing purposes, we'll return the activation code
-            return True, activation_code
-        except Exception as e:
-            logger.error(f"Error resending activation code: {str(e)}")
-            return False, "system_error"
-    
-    def login_user(self, email: str, password: str) -> Tuple[bool, str]:
-        """Authenticate a user
-        
-        Args:
-            email (str): User's email
-            password (str): Plain text password
-            
-        Returns:
-            tuple: (success, user_id or error_message)
-        """
-        try:
-            # First check if this email has a pending registration
-            query = "SELECT id FROM pending_registrations WHERE email = ?"
-            results = self.db_manager.execute_query(query, (email,))
-            
-            if results:
-                return False, "not_activated"
-            
-            # Get the user's info from active users
-            query = "SELECT id, password_hash, salt, is_active FROM users WHERE email = ?"
-            results = self.db_manager.execute_query(query, (email,))
-            
-            if not results:
-                return False, "invalid_credentials"
-            
-            user_id = results[0]['id']
-            password_hash = results[0]['password_hash']
-            salt = results[0]['salt']
-            is_active = results[0]['is_active']
-            
-            # Check if the account is active
-            if not is_active:
-                return False, "account_inactive"
-            
-            # Check the password
-            calculated_hash, _ = self._hash_password(password, salt)
-            
-            if calculated_hash != password_hash:
-                return False, "invalid_credentials"
-            
-            # Update last login time
-            now = time.strftime('%Y-%m-%d %H:%M:%S')
-            update_query = "UPDATE users SET last_login = ? WHERE id = ?"
-            self.db_manager.execute_update(update_query, (now, user_id))
-            
-            return True, str(user_id)
-        except Exception as e:
-            logger.error(f"Error logging in user: {str(e)}")
-            return False, "system_error"
-    
-    def get_user_by_id(self, user_id: str) -> dict:
-        """Get user information by ID
+    def __init__(self, user_id: str, email: str, name: Optional[str] = None, is_guest: bool = False):
+        """Initialize a user
         
         Args:
             user_id (str): User ID
+            email (str): User email
+            name (str, optional): User name
+            is_guest (bool, optional): Whether this is a guest user
+        """
+        self.id = user_id
+        self.email = email
+        self.name = name if name else email.split('@')[0]
+        self.is_guest = is_guest
+        self.is_authenticated = True
+        self.is_active = True
+        self.is_anonymous = False
+        self.session_token = secrets.token_hex(16)
+        self.login_time = time.time()
+    
+    def get_id(self) -> str:
+        """Get user ID for Flask-Login
+        
+        Returns:
+            str: User ID
+        """
+        return self.id
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert user to dictionary
+        
+        Returns:
+            dict: User dictionary
+        """
+        return {
+            'id': self.id,
+            'email': self.email,
+            'name': self.name,
+            'is_guest': self.is_guest,
+            'session_token': self.session_token,
+            'login_time': self.login_time
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'User':
+        """Create user from dictionary
+        
+        Args:
+            data (dict): User dictionary
             
         Returns:
-            dict: User information (excluding password and salt)
+            User: User object
         """
-        try:
-            query = "SELECT id, email, name, created_at, last_login FROM users WHERE id = ?"
-            results = self.db_manager.execute_query(query, (user_id,))
-            
-            if not results:
-                return None
-            
-            return results[0]
-        except Exception as e:
-            logger.error(f"Error getting user by ID: {str(e)}")
-            return None
+        user = cls(
+            user_id=data['id'],
+            email=data['email'],
+            name=data.get('name'),
+            is_guest=data.get('is_guest', False)
+        )
+        user.session_token = data.get('session_token', '')
+        user.login_time = data.get('login_time', time.time())
+        return user
+
+
+class AuthService:
+    """Authentication service for user login and registration"""
     
-    def get_user_by_email(self, email: str) -> dict:
-        """Get user information by email
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        """Singleton pattern to ensure only one Auth service"""
+        if cls._instance is None:
+            cls._instance = super(AuthService, cls).__new__(cls)
+            cls._instance.supabase = SupabaseManager()
+            cls._instance.active_sessions = {}  # Store active sessions
+        return cls._instance
+        
+    def __init__(self, db_path=None):
+        """Initialize the Auth Service
+        
+        Args:
+            db_path (str, optional): Database path, not used in Supabase implementation
+        """
+        # db_path is ignored as we're using Supabase now
+        pass
+    
+    def initialize(self) -> bool:
+        """Initialize the authentication manager
+        
+        Returns:
+            bool: Whether initialization was successful
+        """
+        return self.supabase.initialize()
+    
+    def login(self, email: str, password: str) -> Tuple[bool, Union[User, str]]:
+        """Login a user
         
         Args:
             email (str): User email
+            password (str): User password
             
         Returns:
-            dict: User information (excluding password and salt)
+            tuple: (success, User object or error message)
         """
-        try:
-            query = "SELECT id, email, name, created_at, last_login FROM users WHERE email = ?"
-            results = self.db_manager.execute_query(query, (email,))
-            
-            if not results:
-                return None
-            
-            return results[0]
-        except Exception as e:
-            logger.error(f"Error getting user by email: {str(e)}")
-            return None
-    
-    # Compatibility methods for PyQt UI
-    def login(self, email: str, password: str):
-        """Compatibility method for desktop UI
+        success, result = self.supabase.login_user(email, password)
         
-        Args:
-            email (str): User's email
-            password (str): Plain text password
-            
-        Returns:
-            User: User object if login successful, None otherwise
-        """
-        success, result = self.login_user(email, password)
         if success:
-            from app.models.user import User
-            return User(id=result, username=email)
-        return None
+            # Create User object
+            user = User(
+                user_id=result['id'],
+                email=result['email'],
+                name=result.get('name')
+            )
+            
+            # Add to active sessions
+            self.active_sessions[user.session_token] = user
+            
+            return True, user
+        else:
+            return False, result
     
     def user_exists(self, email: str) -> bool:
-        """Check if a user exists by email
+        """Check if a user exists
         
         Args:
             email (str): User email
             
         Returns:
-            bool: True if user exists, False otherwise
+            bool: Whether the user exists
         """
-        user = self.get_user_by_email(email)
-        return user is not None
+        return self.supabase.user_exists(email)
     
-    def register(self, email: str, password: str, name: str = None) -> object:
-        """Register a new user (compatibility method)
+    def create_guest_user(self) -> User:
+        """Create a guest user
         
-        Args:
-            email (str): User's email
-            password (str): Plain text password
-            name (str, optional): User's name, defaults to email if not provided
-            
         Returns:
-            User: User object if registration successful, None otherwise
+            User: Guest user object
         """
-        if name is None:
-            name = email.split('@')[0]
-            
-        success, result = self.register_user(email, password, name)
-        if success:
-            # For compatibility, we treat the activation code as a successful registration
-            # and auto-activate the account
-            self.verify_activation(email, result)
-            
-            # Get the user ID of the newly created account
-            user = self.get_user_by_email(email)
-            if user:
-                from app.models.user import User
-                return User(id=user['id'], username=email)
-        return None
+        guest_id = f"guest_{secrets.token_hex(8)}"
+        guest_email = f"{guest_id}@guest.local"
+        
+        user = User(
+            user_id=guest_id,
+            email=guest_email,
+            name="مهمان",
+            is_guest=True
+        )
+        
+        # Add to active sessions
+        self.active_sessions[user.session_token] = user
+        
+        return user
     
-    def change_password(self, user_id: str, current_password: str, new_password: str) -> bool:
-        """Change a user's password
+    def validate_session(self, user_id: str, session_token: str) -> bool:
+        """Validate a user session
         
         Args:
             user_id (str): User ID
-            current_password (str): Current password
-            new_password (str): New password
+            session_token (str): Session token
             
         Returns:
-            bool: True if successful, False otherwise
+            bool: Whether the session is valid
         """
-        try:
-            # Verify current password
-            query = "SELECT password_hash, salt FROM users WHERE id = ?"
-            results = self.db_manager.execute_query(query, (user_id,))
-            
-            if not results:
-                return False
-            
-            password_hash = results[0]['password_hash']
-            salt = results[0]['salt']
-            
-            calculated_hash, _ = self._hash_password(current_password, salt)
-            
-            if calculated_hash != password_hash:
-                return False
-            
-            # Hash the new password
-            new_password_hash, new_salt = self._hash_password(new_password)
-            
-            # Update the password
-            update_query = "UPDATE users SET password_hash = ?, salt = ? WHERE id = ?"
-            result = self.db_manager.execute_update(
-                update_query, (new_password_hash, new_salt, user_id)
-            )
-            
-            return result > 0
-        except Exception as e:
-            logger.error(f"Error changing password: {str(e)}")
+        # Check if session exists
+        if session_token not in self.active_sessions:
             return False
+        
+        # Get user from active sessions
+        user = self.active_sessions[session_token]
+        
+        # Check if user ID matches
+        if user.id != user_id:
+            return False
+        
+        # Check if session has expired (24 hours)
+        if time.time() - user.login_time > 24 * 60 * 60:
+            # Remove expired session
+            del self.active_sessions[session_token]
+            return False
+        
+        return True
     
-    def update_user_profile(self, user_id: str, name: str) -> bool:
-        """Update a user's profile information
+    def get_user_by_session(self, session_token: str) -> Optional[User]:
+        """Get user by session token
         
         Args:
-            user_id (str): User ID
-            name (str): New name
+            session_token (str): Session token
             
         Returns:
-            bool: True if successful, False otherwise
+            User: User object or None
         """
-        try:
-            update_query = "UPDATE users SET name = ? WHERE id = ?"
-            result = self.db_manager.execute_update(update_query, (name, user_id))
+        # Check if session exists
+        if session_token not in self.active_sessions:
+            return None
+        
+        # Get user from active sessions
+        user = self.active_sessions[session_token]
+        
+        # Check if session has expired (24 hours)
+        if time.time() - user.login_time > 24 * 60 * 60:
+            # Remove expired session
+            del self.active_sessions[session_token]
+            return None
+        
+        return user
+    
+    def logout(self, session_token: str) -> bool:
+        """Logout a user
+        
+        Args:
+            session_token (str): Session token
             
-            return result > 0
-        except Exception as e:
-            logger.error(f"Error updating user profile: {str(e)}")
-            return False
+        Returns:
+            bool: Whether logout was successful
+        """
+        # Check if session exists
+        if session_token in self.active_sessions:
+            # Remove session
+            del self.active_sessions[session_token]
+            return True
+        
+        return False
