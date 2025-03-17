@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.imagemagick_light
     pkgs.zlib
     pkgs.c-ares
     pkgs.cacert

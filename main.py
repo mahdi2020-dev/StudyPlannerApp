@@ -540,28 +540,22 @@ def run_replit_web_preview():
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         
-        // Login functionality
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Login functionality with direct form submission to server
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            // Form will be submitted directly to server
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             const errorElement = document.getElementById('login-error');
             
-            try {
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                // Removed email verification check
-                /* 
-                if (!userCredential.user.emailVerified) {
-                    errorElement.textContent = 'لطفاً ابتدا ایمیل خود را تایید کنید.';
-                    errorElement.style.display = 'block';
-                    return;
-                }
-                */
-                window.location.href = '/dashboard';
-            } catch (error) {
-                errorElement.textContent = 'نام کاربری یا رمز عبور اشتباه است.';
+            if (!email || !password) {
+                e.preventDefault();
+                errorElement.textContent = 'لطفا ایمیل و رمز عبور را وارد کنید.';
                 errorElement.style.display = 'block';
+                return false;
             }
+            
+            // Let the form submit normally to server
+            return true;
         });
 
         // Registration functionality
