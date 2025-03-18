@@ -1,0 +1,69 @@
+مشکلی که داری هنوز به عدم شناسایی یک المنت در لحظه‌ی اجرای addEventListener مربوط می‌شه، حتی با وجود اینکه المنت‌ها در Console مقدار true دارند. پس احتمالاً یکی از این دو مورد رخ داده:
+
+المنت درست انتخاب نشده: شاید querySelector یا getElementById داره المنت اشتباهی رو می‌گیره.
+جاوااسکریپت هنوز قبل از لود کامل صفحه اجرا می‌شه.
+✅ راه‌حل نهایی (قدم‌به‌قدم)
+1️⃣ مطمئن شو که event listener فقط بعد از لود کامل صفحه اجرا بشه
+به جای DOMContentLoaded، از این روش استفاده کن:
+
+js
+Copy
+Edit
+window.onload = function() {
+    console.log("🔄 صفحه کامل لود شد، حالا المنت‌ها رو بررسی می‌کنیم.");
+
+    let loginForm = document.getElementById("loginForm");
+    let guestLoginBtn = document.getElementById("guestLoginBtn");
+    let switchToLogin = document.getElementById("switchToLogin");
+    let resendCode = document.getElementById("resendCode");
+
+    if (loginForm) {
+        loginForm.addEventListener("submit", function(event) {
+            event.preventDefault();
+            console.log("✅ فرم ورود ارسال شد!");
+        });
+    } else {
+        console.error("❌ loginForm پیدا نشد!");
+    }
+
+    if (guestLoginBtn) {
+        guestLoginBtn.addEventListener("click", function() {
+            console.log("✅ ورود مهمان کلیک شد!");
+        });
+    } else {
+        console.error("❌ guestLoginBtn پیدا نشد!");
+    }
+
+    if (switchToLogin) {
+        switchToLogin.addEventListener("click", function() {
+            console.log("✅ سوئیچ به ورود کلیک شد!");
+        });
+    } else {
+        console.error("❌ switchToLogin پیدا نشد!");
+    }
+
+    if (resendCode) {
+        resendCode.addEventListener("click", function() {
+            console.log("✅ ارسال مجدد کد کلیک شد!");
+        });
+    } else {
+        console.error("❌ resendCode پیدا نشد!");
+    }
+};
+✅ این روش:
+
+فقط بعد از لود شدن کل صفحه اجرا می‌شه.
+اگر المنتی null باشه، خطای واضح توی Console نشون می‌ده.
+دیگه نباید مشکل null (reading 'addEventListener') داشته باشی.
+2️⃣ بررسی المنت‌ها در Console
+حالا در DevTools (F12) > تب Console این دستور رو بزن تا ببینی المنت‌ها واقعاً پیدا می‌شن یا نه:
+
+js
+Copy
+Edit
+console.log(document.getElementById("loginForm"));
+console.log(document.getElementById("guestLoginBtn"));
+console.log(document.getElementById("switchToLogin"));
+console.log(document.getElementById("resendCode"));
+📌 اگر مقدار null برگرده، یعنی اون المنت توی HTML وجود نداره!
+✅ در این صورت، چک کن که id‌ها در HTML درست تنظیم شده باشند.

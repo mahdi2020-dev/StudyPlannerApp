@@ -516,27 +516,38 @@ def run_replit_web_preview():
     <title>ورود | Persian Life Manager</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
     <script>
-        
-        // Login functionality with direct form submission to server
-        document.getElementById('login-form').addEventListener('submit', (e) => {
-            // Form will be submitted directly to server
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            const errorElement = document.getElementById('login-error');
+        // با استفاده از window.onload مطمئن می‌شویم اسکریپت پس از لود کامل صفحه اجرا می‌شود
+        window.onload = function() {
+            console.log("صفحه لاگین کامل لود شد");
             
-            if (!email || !password) {
-                e.preventDefault();
-                errorElement.textContent = 'لطفا ایمیل و رمز عبور را وارد کنید.';
-                errorElement.style.display = 'block';
-                return false;
+            // گرفتن المنت‌های مورد نیاز با بررسی وجود آنها
+            var loginForm = document.getElementById('login-form');
+            
+            // بررسی وجود المنت‌ها و درج event listener ها
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    var email = document.getElementById('login-email');
+                    var password = document.getElementById('login-password');
+                    var errorElement = document.getElementById('login-error');
+                    
+                    if (!email || !password || !email.value || !password.value) {
+                        e.preventDefault();
+                        if (errorElement) {
+                            errorElement.textContent = 'لطفا ایمیل و رمز عبور را وارد کنید.';
+                            errorElement.style.display = 'block';
+                        }
+                        return false;
+                    }
+                    
+                    // اجازه ارسال عادی فرم به سرور
+                    return true;
+                });
+            } else {
+                console.error("فرم لاگین در صفحه پیدا نشد!");
             }
-            
-            // Let the form submit normally to server
-            return true;
-        });
-
-        // Registration has been disabled - admin-only functionality via Supabase dashboard
-        // This remains here just for structure
+        };
+        
+        // ثبت‌نام غیرفعال شده - فقط توسط ادمین از طریق داشبورد Supabase
     </script>
     <style>
         :root {
@@ -782,116 +793,6 @@ def run_replit_web_preview():
             <input type="hidden" id="resend-email" name="email">
         </form>
     </div>
-    
-    <script>
-        // اجرای اسکریپت پس از لود کامل صفحه
-        window.onload = function() {
-            console.log("صفحه کامل لود شد");
-            
-            // تعریف متغیرها با بررسی وجود المنت ها
-            var loginForm = document.getElementById('login-form');
-            var guestLoginBtn = document.getElementById('guest-login-btn');
-            var loginTab = document.getElementById('login-tab');
-            var registerTab = document.getElementById('register-tab');
-            var activateTab = document.getElementById('activate-tab');
-            var registerForm = document.getElementById('register-form');
-            var activateForm = document.getElementById('activate-form');
-            var switchToLogin = document.getElementById('switch-to-login');
-            var resendCode = document.getElementById('resend-code');
-            
-            console.log("المنت‌ها بررسی شدند:", 
-                "loginForm:", loginForm !== null, 
-                "guestLoginBtn:", guestLoginBtn !== null,
-                "switchToLogin:", switchToLogin !== null,
-                "resendCode:", resendCode !== null
-            );
-            
-            // نمایش پیام های خطا از پارامترهای URL
-            var urlParams = new URLSearchParams(window.location.search);
-            var error = urlParams.get('error');
-            
-            if (error) {
-                var errorElement = document.getElementById('login-error');
-                if (errorElement) {
-                    var errorMessage = '';
-                    
-                    switch (error) {
-                        case 'auth/invalid-credentials':
-                            errorMessage = 'نام کاربری یا رمز عبور اشتباه است.';
-                            break;
-                        case 'incomplete':
-                            errorMessage = 'لطفا ایمیل و رمز عبور را وارد کنید.';
-                            break;
-                        case 'supabase-error':
-                            errorMessage = 'خطا در ارتباط با سرور. لطفا بعدا تلاش کنید.';
-                            break;
-                        default:
-                            errorMessage = 'خطایی رخ داده است. لطفا دوباره تلاش کنید.';
-                    }
-                    
-                    errorElement.textContent = errorMessage;
-                    errorElement.style.display = 'block';
-                }
-            }
-            
-            // اضافه کردن کلیک هندلر برای دکمه ورود مهمان
-            if (guestLoginBtn) {
-                guestLoginBtn.addEventListener('click', function() {
-                    window.location.href = '/guest-login';
-                });
-            }
-            
-            // اضافه کردن کلیک هندلر برای لینک switch-to-login
-            if (switchToLogin) {
-                switchToLogin.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    if (registerForm) registerForm.style.display = 'none';
-                    if (activateForm) activateForm.style.display = 'none';
-                    if (loginForm) loginForm.style.display = 'block';
-                    
-                    if (loginTab) loginTab.classList.add('active');
-                    if (registerTab) registerTab.classList.remove('active');
-                    if (activateTab) activateTab.classList.remove('active');
-                });
-            }
-            
-            // اضافه کردن کلیک هندلر برای لینک resend-code
-            if (resendCode) {
-                resendCode.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    var emailInput = document.getElementById('activate-email');
-                    var resendEmailInput = document.getElementById('resend-email');
-                    
-                    if (emailInput && resendEmailInput) {
-                        resendEmailInput.value = emailInput.value;
-                        var resendForm = document.getElementById('resend-form');
-                        if (resendForm) resendForm.submit();
-                    }
-                });
-            }
-            
-            // بررسی فرم لاگین
-            if (loginForm) {
-                loginForm.addEventListener('submit', function(e) {
-                    var email = document.getElementById('login-email');
-                    var password = document.getElementById('login-password');
-                    var errorElement = document.getElementById('login-error');
-                    
-                    // اگر ایمیل یا پسورد خالی باشند
-                    if (!email || !password || !email.value || !password.value) {
-                        e.preventDefault();
-                        if (errorElement) {
-                            errorElement.textContent = 'لطفا ایمیل و رمز عبور را وارد کنید.';
-                            errorElement.style.display = 'block';
-                        }
-                        return false;
-                    }
-                    
-                    return true;
-                });
-            }
-        };
-    </script>
 </body>
 </html>
 '''
