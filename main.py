@@ -786,9 +786,25 @@ def run_replit_web_preview():
     <script>
         // اجرای اسکریپت پس از لود کامل صفحه
         window.onload = function() {
+            console.log("صفحه کامل لود شد");
+            
             // تعریف متغیرها با بررسی وجود المنت ها
             var loginForm = document.getElementById('login-form');
             var guestLoginBtn = document.getElementById('guest-login-btn');
+            var loginTab = document.getElementById('login-tab');
+            var registerTab = document.getElementById('register-tab');
+            var activateTab = document.getElementById('activate-tab');
+            var registerForm = document.getElementById('register-form');
+            var activateForm = document.getElementById('activate-form');
+            var switchToLogin = document.getElementById('switch-to-login');
+            var resendCode = document.getElementById('resend-code');
+            
+            console.log("المنت‌ها بررسی شدند:", 
+                "loginForm:", loginForm !== null, 
+                "guestLoginBtn:", guestLoginBtn !== null,
+                "switchToLogin:", switchToLogin !== null,
+                "resendCode:", resendCode !== null
+            );
             
             // نمایش پیام های خطا از پارامترهای URL
             var urlParams = new URLSearchParams(window.location.search);
@@ -822,6 +838,35 @@ def run_replit_web_preview():
             if (guestLoginBtn) {
                 guestLoginBtn.addEventListener('click', function() {
                     window.location.href = '/guest-login';
+                });
+            }
+            
+            // اضافه کردن کلیک هندلر برای لینک switch-to-login
+            if (switchToLogin) {
+                switchToLogin.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (registerForm) registerForm.style.display = 'none';
+                    if (activateForm) activateForm.style.display = 'none';
+                    if (loginForm) loginForm.style.display = 'block';
+                    
+                    if (loginTab) loginTab.classList.add('active');
+                    if (registerTab) registerTab.classList.remove('active');
+                    if (activateTab) activateTab.classList.remove('active');
+                });
+            }
+            
+            // اضافه کردن کلیک هندلر برای لینک resend-code
+            if (resendCode) {
+                resendCode.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var emailInput = document.getElementById('activate-email');
+                    var resendEmailInput = document.getElementById('resend-email');
+                    
+                    if (emailInput && resendEmailInput) {
+                        resendEmailInput.value = emailInput.value;
+                        var resendForm = document.getElementById('resend-form');
+                        if (resendForm) resendForm.submit();
+                    }
                 });
             }
             
@@ -964,87 +1009,109 @@ def run_replit_web_preview():
     </div>
     
     <script>
-        // اجرای اسکریپت پس از لود کامل صفحه
-        window.onload = function() {
-            // تعریف متغیرها با بررسی وجود المنت ها
-            var chatContainer = document.getElementById('chat-container');
-            var userInput = document.getElementById('user-input');
-            var sendButton = document.getElementById('send-button');
-            var chatHistory = [];
+        // منتظر می‌مانیم تا همه‌ی عناصر صفحه بارگذاری شوند
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("صفحه چت هوشمند کامل لود شد");
             
-            // بررسی وجود المنت‌ها قبل از اضافه کردن ایونت‌ها
-            if (!chatContainer || !userInput || !sendButton) {
-                console.error("برخی از المنت‌های لازم در صفحه یافت نشدند");
-                return;
-            }
-            
-            function addMessage(content, isUser) {
-                var messageDiv = document.createElement('div');
-                messageDiv.classList.add('message');
-                messageDiv.classList.add(isUser ? 'user-message' : 'ai-message');
-                messageDiv.textContent = content;
-                chatContainer.appendChild(messageDiv);
-            }
-            
-            async function sendMessage(message) {
-                if (!message.trim()) return;
+            // بررسی وجود المنت‌های مورد نیاز
+            var checkElements = function() {
+                var chatContainer = document.getElementById('chat-container');
+                var userInput = document.getElementById('user-input');
+                var sendButton = document.getElementById('send-button');
                 
-                addMessage(message, true);
+                console.log("چک کردن المنت‌ها:", 
+                    "chatContainer:", chatContainer !== null, 
+                    "userInput:", userInput !== null,
+                    "sendButton:", sendButton !== null
+                );
                 
-                try {
-                    var response = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            message: message,
-                            history: chatHistory
-                        })
-                    });
+                // اگر همه‌ی المنت‌ها موجود باشند
+                if (chatContainer && userInput && sendButton) {
+                    initChat(chatContainer, userInput, sendButton);
+                } else {
+                    console.error("المنت‌های مورد نیاز یافت نشدند");
+                    // تلاش مجدد پس از 100 میلی‌ثانیه
+                    setTimeout(checkElements, 100);
+                }
+            };
+            
+            // تابع راه‌اندازی چت
+            function initChat(chatContainer, userInput, sendButton) {
+                var chatHistory = [];
+                
+                function addMessage(content, isUser) {
+                    var messageDiv = document.createElement('div');
+                    messageDiv.classList.add('message');
+                    messageDiv.classList.add(isUser ? 'user-message' : 'ai-message');
+                    messageDiv.textContent = content;
+                    chatContainer.appendChild(messageDiv);
+                }
+                
+                async function sendMessage(message) {
+                    if (!message.trim()) return;
                     
-                    var data = await response.json();
+                    addMessage(message, true);
                     
-                    if (data.error) {
-                        addMessage('متأسفانه خطایی رخ داد: ' + data.error, false);
-                    } else {
-                        addMessage(data.response, false);
-                        
-                        chatHistory.push({
-                            role: 'user',
-                            content: message
+                    try {
+                        var response = await fetch('/api/chat', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                message: message,
+                                history: chatHistory
+                            })
                         });
                         
-                        chatHistory.push({
-                            role: 'assistant',
-                            content: data.response
-                        });
+                        var data = await response.json();
+                        
+                        if (data.error) {
+                            addMessage('متأسفانه خطایی رخ داد: ' + data.error, false);
+                        } else {
+                            addMessage(data.response, false);
+                            
+                            chatHistory.push({
+                                role: 'user',
+                                content: message
+                            });
+                            
+                            chatHistory.push({
+                                role: 'assistant',
+                                content: data.response
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        addMessage('متأسفانه خطایی رخ داد. لطفاً دوباره تلاش کنید.', false);
                     }
-                } catch (error) {
-                    console.error('Error:', error);
-                    addMessage('متأسفانه خطایی رخ داد. لطفاً دوباره تلاش کنید.', false);
                 }
-            }
-            
-            // اضافه کردن ایونت‌ها
-            sendButton.addEventListener('click', function() {
-                var message = userInput.value;
-                if (message.trim()) {
-                    sendMessage(message);
-                    userInput.value = '';
-                }
-            });
-            
-            userInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
+                
+                // اضافه کردن ایونت‌ها
+                sendButton.addEventListener('click', function() {
                     var message = userInput.value;
                     if (message.trim()) {
                         sendMessage(message);
                         userInput.value = '';
                     }
-                }
-            });
-        };
+                });
+                
+                userInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        var message = userInput.value;
+                        if (message.trim()) {
+                            sendMessage(message);
+                            userInput.value = '';
+                        }
+                    }
+                });
+                
+                console.log("چت هوشمند با موفقیت راه‌اندازی شد");
+            }
+            
+            // شروع بررسی المنت‌ها
+            checkElements();
+        });
     </script>
 </body>
 </html>
