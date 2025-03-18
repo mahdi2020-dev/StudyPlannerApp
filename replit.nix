@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.mailutils
     pkgs.imagemagick_light
     pkgs.zlib
     pkgs.c-ares
