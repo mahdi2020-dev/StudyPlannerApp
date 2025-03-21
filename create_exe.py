@@ -44,7 +44,7 @@ def create_executable():
 block_cipher = None
 
 a = Analysis(
-    ['main.py'],
+    ['run_desktop.py'],  # Use run_desktop.py instead of main.py for better desktop support
     pathex=[],
     binaries=[],
     datas=[
@@ -52,6 +52,7 @@ a = Analysis(
         ('app/templates', 'app/templates'),
         ('app/static', 'app/static'),
         ('serviceAccountKey.json', '.'),
+        ('app/ui/style', 'app/ui/style'),  # Include style files
     ],
     hiddenimports=[
         'firebase_admin',
@@ -64,10 +65,12 @@ a = Analysis(
         'PyQt6.QtCore',
         'PyQt6.QtGui',
         'PyQt6.QtWebEngineWidgets',
+        'PyQt6.QtWebEngineCore',
         'app.core.auth',
         'app.core.database',
         'app.core.firebase_adapter',
         'app.core.firebase_auth',
+        'app.core.supabase_client',
         'app.models.user',
         'app.models.finance',
         'app.models.health',
@@ -78,8 +81,19 @@ a = Analysis(
         'app.services.speech_to_text',
         'app.services.religious_service',
         'app.services.calendar_converter',
+        'app.ui.widgets',
+        'app.ui.style',
+        'app.ui.dashboard',
+        'app.ui.main_window',
+        'app.ui.login_window',
         'openai',
-        'tflite_runtime',
+        'uuid',
+        'webbrowser',
+        'threading',
+        'time',
+        'datetime',
+        'json',
+        'logging',
     ],
     hookspath=[],
     hooksconfig={},

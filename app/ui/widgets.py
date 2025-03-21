@@ -481,7 +481,9 @@ class UserProfileWidget(QFrame):
         layout.setSpacing(5)
         
         # Username
-        self.username_label = QLabel(user.username)
+        # برای سازگاری با هر دو نوع شی User
+        username = getattr(user, 'name', getattr(user, 'username', 'کاربر'))
+        self.username_label = QLabel(username)
         self.username_label.setObjectName("usernameLabel")
         
         # Status/Last login

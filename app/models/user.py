@@ -6,20 +6,34 @@ User-related data models for Persian Life Manager Application
 """
 
 class User:
-    """User model"""
+    """User model compatible with auth.User"""
     
-    def __init__(self, id, username):
+    def __init__(self, user_id, name=None, email=None, username=None, is_guest=False):
         """Initialize a user
         
         Args:
-            id (int): User ID
-            username (str): Username
+            user_id (str): User ID
+            name (str, optional): User's full name. Defaults to None.
+            email (str, optional): User's email address. Defaults to None.
+            username (str, optional): Username. Defaults to None.
+            is_guest (bool, optional): Whether this is a guest user. Defaults to False.
         """
-        self.id = id
-        self.username = username
+        import time
+        
+        self.id = user_id
+        self.user_id = user_id  # متغیر مترادف با id
+        self.name = name or username or "کاربر"
+        self.username = username or name or "کاربر" 
+        self.email = email or f"{user_id}@guest.persianlifemanager.app"
+        self.is_guest = is_guest
+        self.created_at = time.time()
+        self.last_login = time.time()
+        self.login_time = None  # زمان ورود به فرمت رشته‌ای
+        self.preferences = {}   # تنظیمات کاربر
+        self.metadata = {}      # داده‌های اضافی
     
     def __str__(self):
-        return f"User({self.id}, {self.username})"
+        return f"User({self.id}, {self.name}, {self.email}, Guest={self.is_guest})"
 
 
 class UserSettings:
