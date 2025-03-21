@@ -112,6 +112,16 @@ def run_replit_web_preview():
     auth_service = AuthService()
     auth_service.initialize()
     
+    # Check for Google OAuth credentials
+    GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+    GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+    
+    if not GOOGLE_OAUTH_CLIENT_ID or not GOOGLE_OAUTH_CLIENT_SECRET:
+        logger.warning("GOOGLE_OAUTH_CLIENT_ID or GOOGLE_OAUTH_CLIENT_SECRET environment variables not set")
+        logger.warning("Google login functionality will be limited")
+    else:
+        logger.info("Google OAuth credentials found. Google login is available.")
+    
     # Initialize AI service
     ai_service = AIService()
     
