@@ -267,10 +267,16 @@ class AuthService:
         
         try:
             # برای ورود با گوگل، URL بازگشت (redirect URL) را ایجاد می‌کنیم
+            # دریافت دامنه Replit از متغیرهای محیطی
+            replit_domain = os.environ.get("REPLIT_DEV_DOMAIN")
+            
+            # استفاده از دامنه Replit برای URL بازگشت، در غیر این صورت از localhost استفاده کن
+            callback_url = f"https://{replit_domain}/auth/callback" if replit_domain else "http://localhost:5000/auth/callback"
+            
             redirect_url = self.supabase.client.auth.get_url_for_provider(
                 "google",
                 options={
-                    "redirect_to": "http://localhost:5000/auth/callback"
+                    "redirect_to": callback_url
                 }
             )
             
