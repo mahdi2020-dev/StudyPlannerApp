@@ -31,11 +31,12 @@ class User:
         self.id = user_id
         self.user_id = user_id  # اضافه کردن user_id به عنوان مترادف برای id
         self.name = name
+        self.username = name    # برای سازگاری با کدهای قبلی که از username استفاده می‌کنند
         self.email = email
         self.is_guest = is_guest
         self.created_at = time.time()
         self.last_login = time.time()
-        self.login_time = None  # زمان ورود به فرمت رشته‌ای - برای استفاده آسان‌تر
+        self.login_time = ""    # تغییر از None به رشته خالی برای جلوگیری از خطای مقداردهی
         self.preferences = {}   # تنظیمات کاربر
         self.metadata = {}      # داده‌های اضافی
     
