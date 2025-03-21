@@ -876,6 +876,8 @@ def run_replit_web_preview():
             # Define HTML content - using a simple approach to avoid syntax issues
             username = current_user["username"] if current_user["username"] else "کاربر"
             
+            # صفحه ساده‌تر برای تست اولیه عملکرد
+            
             html_content = '''
 <!DOCTYPE html>
 <html>
@@ -1297,26 +1299,7 @@ def run_replit_web_preview():
         def handle_guest_login(self):
             """Handle guest login request using local guest account"""
             try:
-                # اولویت: استفاده از AuthService اگر قابل دسترس باشد
-                if 'auth_service' in globals() and auth_service is not None:
-                    # تلاش برای استفاده از سرویس احراز هویت برای ساخت جلسه مهمان
-                    try:
-                        success, session_id, guest_user = auth_service.create_guest_session()
-                        
-                        if success and guest_user:
-                            # تنظیم جلسه برای کاربر مهمان
-                            current_user["user_id"] = guest_user.user_id
-                            current_user["username"] = guest_user.name
-                            current_user["is_guest"] = True
-                            current_user["email"] = guest_user.email
-                            
-                            logger.info("Guest user created via auth service")
-                            self.send_redirect('/dashboard')
-                            return
-                    except Exception as inner_e:
-                        logger.error(f"Error creating guest session via auth service: {str(inner_e)}")
-                
-                # روش جایگزین: ایجاد کاربر مهمان به صورت محلی
+                # ایجاد کاربر مهمان به صورت ساده و مستقیم
                 import uuid
                 guest_id = f"guest-{uuid.uuid4()}"
                 guest_name = "کاربر مهمان"
@@ -1327,16 +1310,86 @@ def run_replit_web_preview():
                 current_user["is_guest"] = True
                 current_user["email"] = f"{guest_id}@guest.persianlifemanager.app"
                     
-                logger.info(f"Local guest user created with ID: {guest_id}")
+                logger.info(f"Guest user created with ID: {guest_id}")
+                
+                # هدایت به داشبورد
                 self.send_redirect('/dashboard')
                 
             except Exception as e:
                 logger.error(f"Guest login error: {str(e)}")
-                # حالت پشتیبان نهایی
-                current_user["user_id"] = "guest-user-id"
-                current_user["username"] = "کاربر مهمان"
-                current_user["is_guest"] = True
-                self.send_redirect('/dashboard')
+                # حالت خطا - نمایش پیام خطا به کاربر
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html; charset=UTF-8')
+                self.end_headers()
+                
+                error_html = f'''
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>خطا در ورود</title>
+                    <style>
+                        body {{
+                            font-family: Arial, sans-serif;
+                            background-color: #121212;
+                            color: #ffffff;
+                            margin: 0;
+                            padding: 0;
+                            height: 100vh;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            direction: rtl;
+                            text-align: center;
+                        }}
+                        .error-container {{
+                            background-color: #1e1e1e;
+                            border-radius: 8px;
+                            padding: 30px;
+                            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+                            max-width: 500px;
+                        }}
+                        .error-icon {{
+                            color: #ff5555;
+                            font-size: 48px;
+                            margin-bottom: 20px;
+                        }}
+                        h1 {{
+                            color: #ff5555;
+                            margin-bottom: 20px;
+                        }}
+                        p {{
+                            margin-bottom: 20px;
+                        }}
+                        .back-button {{
+                            background-color: #333;
+                            color: #fff;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 5px;
+                            cursor: pointer;
+                            text-decoration: none;
+                            display: inline-block;
+                            margin-top: 20px;
+                        }}
+                        .back-button:hover {{
+                            background-color: #444;
+                            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <div class="error-container">
+                        <div class="error-icon">⚠️</div>
+                        <h1>خطا در ورود به عنوان مهمان</h1>
+                        <p>متأسفانه هنگام ورود به عنوان مهمان خطایی رخ داد.</p>
+                        <p>لطفاً مجدداً تلاش کنید یا از روش دیگری برای ورود استفاده نمایید.</p>
+                        <a href="/login" class="back-button">بازگشت به صفحه ورود</a>
+                    </div>
+                </body>
+                </html>
+                '''
+                self.wfile.write(error_html.encode('utf-8'))
         
         def handle_api_chat_post(self, json_data):
             if ai_chat_service is None:
@@ -1444,7 +1497,7 @@ def run_replit_web_preview():
                 self.send_json_response({"error": "An error occurred while processing your request"})
 
         def send_dashboard_page(self):
-            # To be implemented
+            """ارسال صفحه داشبورد - نسخه ساده‌شده برای تست عملکرد"""
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=UTF-8')
             self.end_headers()
@@ -1454,7 +1507,8 @@ def run_replit_web_preview():
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>داشبورد</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد - مدیریت زندگی</title>
     <style>
         body {{
             font-family: Arial, sans-serif;
@@ -1468,6 +1522,7 @@ def run_replit_web_preview():
             background-color: #1e1e1e;
             padding: 15px;
             text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         }}
         .content {{
             padding: 20px;
@@ -1476,18 +1531,59 @@ def run_replit_web_preview():
         }}
         h1, h2 {{
             color: #00ffaa;
+            text-shadow: 0 0 10px rgba(0, 255, 170, 0.3);
+        }}
+        h1 {{
+            margin: 0;
+            padding: 10px 0;
+        }}
+        .nav-links {{
+            margin-top: 15px;
         }}
         a {{
             color: #ecf0f1;
             text-decoration: none;
             margin: 0 10px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }}
+        a:hover {{
+            background-color: rgba(255, 255, 255, 0.1);
+        }}
+        .welcome-card {{
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid #2d2d2d;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }}
+        .neon-text {{
+            color: #00ffaa;
+            text-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
+        }}
+        .action-button {{
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: rgba(0, 255, 170, 0.1);
+            color: #00ffaa;
+            border: 1px solid #00ffaa;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: all 0.3s;
+        }}
+        .action-button:hover {{
+            background-color: rgba(0, 255, 170, 0.2);
+            box-shadow: 0 0 15px rgba(0, 255, 170, 0.3);
         }}
     </style>
 </head>
 <body>
     <div class="navbar">
-        <h1>Persian Life Manager</h1>
-        <div>
+        <h1>مدیریت زندگی پارسی</h1>
+        <div class="nav-links">
             <a href="/dashboard">داشبورد</a>
             <a href="/finance">مالی</a>
             <a href="/health">سلامت</a>
@@ -1499,41 +1595,17 @@ def run_replit_web_preview():
     </div>
     
     <div class="content">
-        <h2>داشبورد</h2>
-        <p>خوش آمدید {current_user["username"]}!</p>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
-            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d;">
-                <h3 style="color: #00ffaa; margin-top: 0;">آمار سلامت</h3>
-                <p>وضعیت کلی: سالم</p>
-                <p>قدم‌های امروز: 6,580</p>
-                <p>آخرین ورزش: پیاده‌روی (30 دقیقه)</p>
-                <a href="/health" style="display: inline-block; margin-top: 10px; padding: 5px 10px; background-color: rgba(0, 255, 170, 0.1); color: #00ffaa; border: 1px solid #00ffaa; border-radius: 5px; text-decoration: none;">مشاهده جزئیات</a>
-            </div>
-            
-            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d;">
-                <h3 style="color: #00ffaa; margin-top: 0;">خلاصه مالی</h3>
-                <p>درآمد ماه: 12,500,000 تومان</p>
-                <p>هزینه‌های ماه: 8,200,000 تومان</p>
-                <p>پس‌انداز: 4,300,000 تومان</p>
-                <a href="/finance" style="display: inline-block; margin-top: 10px; padding: 5px 10px; background-color: rgba(0, 255, 170, 0.1); color: #00ffaa; border: 1px solid #00ffaa; border-radius: 5px; text-decoration: none;">مشاهده جزئیات</a>
-            </div>
-            
-            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d;">
-                <h3 style="color: #00ffaa; margin-top: 0;">رویدادهای امروز</h3>
-                <p>جلسه کاری: 10:30 - 12:00</p>
-                <p>ورزش: 17:00 - 18:00</p>
-                <p>مطالعه: 21:00 - 22:00</p>
-                <a href="/calendar" style="display: inline-block; margin-top: 10px; padding: 5px 10px; background-color: rgba(0, 255, 170, 0.1); color: #00ffaa; border: 1px solid #00ffaa; border-radius: 5px; text-decoration: none;">مشاهده تقویم</a>
-            </div>
-            
-            <div style="background-color: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #2d2d2d;">
-                <h3 style="color: #00ffaa; margin-top: 0;">یادآوری‌های مهم</h3>
-                <p>پرداخت قبض برق: 2 روز مانده</p>
-                <p>نوبت دکتر: 5 روز مانده</p>
-                <p>سالگرد ازدواج: 12 روز مانده</p>
-                <a href="/calendar" style="display: inline-block; margin-top: 10px; padding: 5px 10px; background-color: rgba(0, 255, 170, 0.1); color: #00ffaa; border: 1px solid #00ffaa; border-radius: 5px; text-decoration: none;">مدیریت یادآوری‌ها</a>
-            </div>
+        <div class="welcome-card">
+            <h2 class="neon-text">خوش آمدید {current_user["username"]}!</h2>
+            <p>شما با موفقیت وارد سیستم شده‌اید.</p>
+            <p>این نسخه ساده شده برنامه است که برای تست عملکرد ایجاد شده است.</p>
+            <p>اطلاعات حساب کاربری:</p>
+            <ul>
+                <li>شناسه کاربری: {current_user["user_id"]}</li>
+                <li>نام کاربری: {current_user["username"]}</li>
+                <li>نوع حساب: {"مهمان" if current_user.get("is_guest", False) else "کاربر عادی"}</li>
+            </ul>
+            <a href="/ai-chat" class="action-button">شروع چت با دستیار هوشمند</a>
         </div>
     </div>
 </body>
