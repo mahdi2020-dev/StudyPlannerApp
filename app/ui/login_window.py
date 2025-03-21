@@ -27,8 +27,66 @@ class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
         
+        # بررسی و تنظیم متغیرهای محیطی Supabase
+        self.check_supabase_env()
+        
+        # راه‌اندازی سرویس احراز هویت
         self.auth_service = AuthService()
+        self.auth_service.initialize()
+        
         self.init_ui()
+        
+    def check_supabase_env(self):
+        """بررسی و تنظیم متغیرهای محیطی Supabase"""
+        import os
+        import json
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        # مسیر پیش‌فرض فایل تنظیمات
+        config_path = os.path.expanduser("~/.persian_life_manager/config.json")
+        
+        # بررسی وجود متغیرهای محیطی
+        supabase_url = os.environ.get("SUPABASE_URL")
+        supabase_key = os.environ.get("SUPABASE_KEY")
+        
+        # اگر متغیرهای محیطی تنظیم نشده‌اند، از فایل تنظیمات بخوانیم
+        if not supabase_url or not supabase_key:
+            logger.info("Supabase environment variables not set. Trying to load from config file...")
+            
+            try:
+                # بررسی وجود فایل تنظیمات
+                if os.path.exists(config_path):
+                    with open(config_path, 'r') as f:
+                        config = json.load(f)
+                        
+                    # تنظیم متغیرهای محیطی از فایل تنظیمات
+                    if 'SUPABASE_URL' in config:
+                        os.environ['SUPABASE_URL'] = config['SUPABASE_URL']
+                        logger.info("Loaded SUPABASE_URL from config file")
+                        
+                    if 'SUPABASE_KEY' in config:
+                        os.environ['SUPABASE_KEY'] = config['SUPABASE_KEY']
+                        logger.info("Loaded SUPABASE_KEY from config file")
+                else:
+                    # ایجاد فایل تنظیمات پیش‌فرض
+                    logger.warning("Config file not found. Creating a default one.")
+                    os.makedirs(os.path.dirname(config_path), exist_ok=True)
+                    
+                    # مقادیر پیش‌فرض برای فایل تنظیمات
+                    default_config = {
+                        'SUPABASE_URL': 'https://bkleshmdjkoonfphznsd.supabase.co',  # مقدار از تصویر دوم که ارسال کردید
+                        'SUPABASE_KEY': '',  # نیاز به تنظیم دستی دارد
+                    }
+                    
+                    with open(config_path, 'w') as f:
+                        json.dump(default_config, f, indent=4)
+                        
+                    logger.info(f"Default config file created at {config_path}")
+                    logger.warning("Please edit the config file to set your Supabase key.")
+            except Exception as e:
+                logger.error(f"Error loading config: {str(e)}")
         
     def init_ui(self):
         """Initialize the UI components"""
