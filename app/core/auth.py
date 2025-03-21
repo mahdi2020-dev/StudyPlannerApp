@@ -151,12 +151,32 @@ class AuthService:
                 - Session ID if successful, None otherwise
                 - Error message if unsuccessful, None otherwise
         """
+        # اطمینان از راه‌اندازی سرویس
+        if not hasattr(self, '_initialized') or not self._initialized:
+            try:
+                self.initialize()
+            except Exception as e:
+                logger.error(f"Failed to initialize AuthService: {str(e)}")
+                return False, None, "خطا در راه‌اندازی سرویس احراز هویت"
+                
+        # اطمینان از راه‌اندازی Supabase
+        if not hasattr(self, 'supabase'):
+            logger.error("Supabase attribute not found in AuthService")
+            return False, None, "خطا در پیکربندی Supabase"
+            
+        # تلاش برای راه‌اندازی Supabase اگر هنوز فعال نشده است
         if not self.supabase.is_initialized():
-            if not self.supabase.initialize():
-                return False, None, "Failed to initialize Supabase client"
+            try:
+                if not self.supabase.initialize():
+                    # اگر راه‌اندازی موفق نبود، لاگین مهمان را پیشنهاد بده
+                    logger.error("Failed to initialize Supabase client for login")
+                    return False, None, "خطا در اتصال به Supabase. لطفاً از گزینه 'ورود به عنوان مهمان' استفاده کنید یا تنظیمات Supabase را بررسی کنید."
+            except Exception as e:
+                logger.error(f"Error initializing Supabase: {str(e)}")
+                return False, None, f"خطا در اتصال به Supabase: {str(e)}. لطفاً از گزینه 'ورود به عنوان مهمان' استفاده کنید."
         
         try:
-            # Authenticate with Supabase
+            # احراز هویت با Supabase
             auth_response = self.supabase.client.auth.sign_in_with_password({
                 "email": email,
                 "password": password
@@ -165,19 +185,33 @@ class AuthService:
             user = auth_response.user
             
             if not user:
-                return False, None, "Invalid credentials"
+                return False, None, "نام کاربری یا رمز عبور اشتباه است"
             
-            # Create session
+            # ایجاد جلسه جدید
             session_id = str(uuid.uuid4())
+            
+            # اطمینان از راه‌اندازی جلسات فعال
+            if not hasattr(self, 'active_sessions'):
+                self.active_sessions = {}
+                
             self.active_sessions[session_id] = Session(
                 session_id=session_id,
                 user_id=user.id
             )
             
+            logger.info(f"User {email} logged in successfully with session {session_id}")
             return True, session_id, None
+            
         except Exception as e:
             logger.error(f"Login error: {str(e)}")
-            return False, None, str(e)
+            # بررسی خطاهای رایج با پیغام‌های مناسب
+            error_msg = str(e).lower()
+            if "invalid login credentials" in error_msg:
+                return False, None, "نام کاربری یا رمز عبور اشتباه است"
+            elif "network" in error_msg or "connection" in error_msg:
+                return False, None, "خطا در اتصال به سرور. لطفاً اتصال اینترنت خود را بررسی کنید."
+            else:
+                return False, None, f"خطا در ورود: {str(e)}"
     
     def user_exists(self, email: str) -> bool:
         """
@@ -202,28 +236,53 @@ class AuthService:
         Returns:
             Optional[User]: User object if session is valid, None otherwise
         """
+        # بررسی اعتبار جلسه
         if session_id not in self.active_sessions:
+            logger.warning(f"Session {session_id} not found in active sessions")
             return None
             
         session = self.active_sessions[session_id]
         
         if not session.is_valid():
             # Session expired
+            logger.warning(f"Session {session_id} has expired")
             del self.active_sessions[session_id]
             return None
         
-        # Get user data from Supabase
-        user_data = self.supabase.get_user(session.user_id)
+        # بررسی کاربر مهمان
+        user_id = session.user_id
+        if user_id.startswith('guest-'):
+            # کاربر مهمان را مستقیم برگردان
+            logger.info(f"Returning guest user for session {session_id}")
+            return User(
+                user_id=user_id,
+                name="کاربر مهمان",
+                email=f"{user_id}@guest.persianlifemanager.app",
+                is_guest=True
+            )
         
-        if not user_data:
+        # اطمینان از راه‌اندازی Supabase
+        if not hasattr(self, 'supabase') or not self.supabase.is_initialized():
+            logger.error("Supabase is not initialized for non-guest users")
             return None
             
-        return User(
-            user_id=user_data.get('id', ''),
-            name=user_data.get('name', ''),
-            email=user_data.get('email', ''),
-            is_guest=user_data.get('is_guest', False)
-        )
+        try:
+            # Get user data from Supabase
+            user_data = self.supabase.get_user(user_id)
+            
+            if not user_data:
+                logger.warning(f"No user data found for user ID {user_id}")
+                return None
+                
+            return User(
+                user_id=user_data.get('id', ''),
+                name=user_data.get('name', ''),
+                email=user_data.get('email', ''),
+                is_guest=user_data.get('is_guest', False)
+            )
+        except Exception as e:
+            logger.error(f"Error getting user by session: {str(e)}")
+            return None
     
     def logout(self, session_id: str) -> bool:
         """
@@ -250,21 +309,33 @@ class AuthService:
                 - Session ID if successful, None otherwise
                 - User object if successful, None otherwise
         """
+        # اطمینان از راه‌اندازی سرویس
+        if not hasattr(self, '_initialized') or not self._initialized:
+            self.initialize()
+        
+        # اطمینان از راه‌اندازی جلسات فعال
+        if not hasattr(self, 'active_sessions'):
+            self.active_sessions = {}
+        
+        # ایجاد شناسه‌های یکتا
         session_id = str(uuid.uuid4())
         user_id = f"guest-{uuid.uuid4()}"
         
+        # ایجاد کاربر مهمان پارسی
         guest_user = User(
             user_id=user_id,
-            name="Guest User",
+            name="کاربر مهمان",  # به فارسی تغییر داده شد
             email=f"{user_id}@guest.persianlifemanager.app",
             is_guest=True
         )
         
+        # ذخیره جلسه
         self.active_sessions[session_id] = Session(
             session_id=session_id,
             user_id=user_id
         )
         
+        logger.info(f"Created guest session with ID: {session_id}")
         return True, session_id, guest_user
     
     def get_all_sessions(self) -> List[Dict]:

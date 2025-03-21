@@ -39,141 +39,71 @@ class NeonLineEdit(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         
+        from PyQt6.QtWidgets import QLineEdit
+        
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         
-        self._line_edit = QPushButton()
+        # استفاده از QLineEdit واقعی به جای QPushButton
+        self._line_edit = QLineEdit()
         self._line_edit.setObjectName("neonLineEdit")
         self._line_edit.setStyleSheet("""
-            QPushButton {
+            QLineEdit {
                 background-color: #1a1a1a;
                 border: 1px solid #2d2d2d;
                 border-radius: 5px;
                 padding: 8px;
                 color: #ecf0f1;
-                text-align: left;
+                selection-background-color: #00ffaa;
+                selection-color: #000000;
             }
             
-            QPushButton:hover {
+            QLineEdit:hover {
                 border: 1px solid #444444;
             }
             
-            QPushButton:focus {
+            QLineEdit:focus {
                 border: 1px solid #00ffaa;
+                border-width: 2px;
             }
         """)
         
-        self._text = ""
-        self._placeholder_text = ""
-        self._echo_mode = Qt.TextFormat.PlainText
-        
-        # Connect button click to start editing
-        self._line_edit.clicked.connect(self._start_editing)
+        # اتصال سیگنال‌های QLineEdit
+        self._line_edit.textChanged.connect(self._on_text_changed)
         
         layout.addWidget(self._line_edit)
-        
-        # Initially not in edit mode
-        self._editing = False
-        self._update_display()
     
-    def _start_editing(self):
-        """Start text editing mode"""
-        if not self._editing:
-            from PyQt6.QtWidgets import QInputDialog, QLineEdit
-            
-            input_type = QLineEdit.EchoMode.Normal
-            if self._echo_mode == QLineEdit.EchoMode.Password:
-                input_type = QLineEdit.EchoMode.Password
-            
-            text, ok = QInputDialog.getText(
-                self,
-                "ویرایش متن",
-                "متن:",
-                input_type,
-                self._text
-            )
-            
-            if ok:
-                self.setText(text)
-                self.textChanged.emit(text)
+    def _on_text_changed(self, text):
+        """هنگام تغییر متن در QLineEdit"""
+        self.textChanged.emit(text)
     
     def text(self):
-        """Get the current text"""
-        return self._text
+        """دریافت متن فعلی"""
+        return self._line_edit.text()
     
     def setText(self, text):
-        """Set the text"""
-        if self._text != text:
-            self._text = text
-            self._update_display()
-            self.textChanged.emit(text)
+        """تنظیم متن"""
+        self._line_edit.setText(text)
     
     def placeholderText(self):
-        """Get the placeholder text"""
-        return self._placeholder_text
+        """دریافت متن راهنما"""
+        return self._line_edit.placeholderText()
     
     def setPlaceholderText(self, text):
-        """Set the placeholder text"""
-        self._placeholder_text = text
-        self._update_display()
+        """تنظیم متن راهنما"""
+        self._line_edit.setPlaceholderText(text)
     
     def echoMode(self):
-        """Get the echo mode"""
-        return self._echo_mode
+        """دریافت حالت نمایش متن"""
+        return self._line_edit.echoMode()
     
     def setEchoMode(self, mode):
-        """Set the echo mode"""
-        self._echo_mode = mode
-        self._update_display()
-    
-    def _update_display(self):
-        """Update the display based on current settings"""
-        if not self._text and self._placeholder_text:
-            # Show placeholder
-            self._line_edit.setText(self._placeholder_text)
-            self._line_edit.setStyleSheet("""
-                QPushButton {
-                    background-color: #1a1a1a;
-                    border: 1px solid #2d2d2d;
-                    border-radius: 5px;
-                    padding: 8px;
-                    color: #555555;
-                    text-align: left;
-                }
-                
-                QPushButton:hover {
-                    border: 1px solid #444444;
-                }
-            """)
-        else:
-            # Show text or masked text
-            display_text = self._text
-            if self._echo_mode == Qt.TextFormat.RichText:
-                display_text = "•" * len(self._text)
-            
-            self._line_edit.setText(display_text)
-            self._line_edit.setStyleSheet("""
-                QPushButton {
-                    background-color: #1a1a1a;
-                    border: 1px solid #2d2d2d;
-                    border-radius: 5px;
-                    padding: 8px;
-                    color: #ecf0f1;
-                    text-align: left;
-                }
-                
-                QPushButton:hover {
-                    border: 1px solid #444444;
-                }
-                
-                QPushButton:focus {
-                    border: 1px solid #00ffaa;
-                }
-            """)
+        """تنظیم حالت نمایش متن"""
+        self._line_edit.setEchoMode(mode)
     
     def clear(self):
-        """Clear the text"""
-        self.setText("")
+        """پاک کردن متن"""
+        self._line_edit.clear()
 
 
 class NeonButton(QPushButton):

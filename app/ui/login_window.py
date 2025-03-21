@@ -84,7 +84,16 @@ class LoginWindow(QWidget):
                         json.dump(default_config, f, indent=4)
                         
                     logger.info(f"Default config file created at {config_path}")
-                    logger.warning("Please edit the config file to set your Supabase key.")
+                    
+                    # نمایش پیام به کاربر در مورد Supabase key
+                    from PyQt6.QtWidgets import QMessageBox
+                    QMessageBox.information(
+                        self,
+                        "تنظیمات Supabase",
+                        f"فایل تنظیمات Supabase در مسیر زیر ایجاد شد:\n{config_path}\n\n"
+                        "لطفاً کلید Supabase را در این فایل تنظیم کنید یا از گزینه «ورود به عنوان مهمان» استفاده نمایید.\n\n"
+                        "کلید Supabase را می‌توانید از داشبورد خود در Supabase به دست آورید."
+                    )
             except Exception as e:
                 logger.error(f"Error loading config: {str(e)}")
         
