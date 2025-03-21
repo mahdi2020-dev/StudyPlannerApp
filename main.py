@@ -125,25 +125,58 @@ def run_replit_web_preview():
     # Initialize AI service
     ai_service = AIService()
     
-    # Add OpenAI API key check
+    # Check for AI API keys (both OpenAI and HuggingFace)
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-    if not OPENAI_API_KEY:
-        logger.warning("OPENAI_API_KEY environment variable not set. AI features will be limited.")
+    HUGGINGFACE_API_KEY = os.environ.get("HUGGINGFACE_API_KEY") or os.environ.get("XAI_API_KEY")
     
-    # Import AI chat service
+    # If provided key is a Hugging Face API key (starts with "hf_"), store it
+    if OPENAI_API_KEY and OPENAI_API_KEY.startswith("hf_"):
+        os.environ["HUGGINGFACE_API_KEY"] = OPENAI_API_KEY
+        HUGGINGFACE_API_KEY = OPENAI_API_KEY
+        OPENAI_API_KEY = None
+        
+    # Log which API keys are available
+    if not OPENAI_API_KEY and not HUGGINGFACE_API_KEY:
+        logger.warning("Neither OPENAI_API_KEY nor HUGGINGFACE_API_KEY environment variables are set. AI features will be limited.")
+    elif OPENAI_API_KEY:
+        logger.info("OpenAI API key found. Using OpenAI for AI features.")
+    elif HUGGINGFACE_API_KEY:
+        logger.info("Hugging Face API key found. Using Hugging Face for AI features.")
+    
+    # Import appropriate AI chat service based on available keys
+    ai_chat_service = None
     try:
-        from app.services.ai_chat_service import AIChatService
-        ai_chat_service = AIChatService()
-        logger.info("AI Chat Service initialized successfully")
+        if HUGGINGFACE_API_KEY:
+            # Use Hugging Face API service
+            from app.services.ai_chat_service_hf import AIChatServiceHF
+            ai_chat_service = AIChatServiceHF()
+            logger.info("Hugging Face AI Chat Service initialized successfully")
+        elif OPENAI_API_KEY:
+            # Use OpenAI service
+            from app.services.ai_chat_service import AIChatService
+            ai_chat_service = AIChatService()
+            logger.info("OpenAI Chat Service initialized successfully")
+        else:
+            logger.warning("No AI service could be initialized due to missing API keys")
     except Exception as e:
         logger.error(f"Failed to initialize AI Chat Service: {str(e)}")
         ai_chat_service = None
         
-    # Import speech to text service
+    # Import appropriate speech to text service based on available keys
+    speech_service = None
     try:
-        from app.services.speech_to_text import SpeechToTextService
-        speech_service = SpeechToTextService()
-        logger.info("Speech-to-Text Service initialized successfully")
+        if HUGGINGFACE_API_KEY:
+            # Use Hugging Face API service
+            from app.services.speech_to_text_hf import SpeechToTextServiceHF
+            speech_service = SpeechToTextServiceHF()
+            logger.info("Hugging Face Speech-to-Text Service initialized successfully")
+        elif OPENAI_API_KEY:
+            # Use OpenAI service
+            from app.services.speech_to_text import SpeechToTextService
+            speech_service = SpeechToTextService()
+            logger.info("OpenAI Speech-to-Text Service initialized successfully")
+        else:
+            logger.warning("No Speech-to-Text service could be initialized due to missing API keys")
     except Exception as e:
         logger.error(f"Failed to initialize Speech-to-Text Service: {str(e)}")
         speech_service = None
