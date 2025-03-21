@@ -773,7 +773,18 @@ def run_replit_web_preview():
                 <div class="error-message" id="login-error"></div>
             </div>
             
-            <button type="submit" class="neon-button">ورود</button>
+            <div class="form-buttons">
+                <button type="submit" class="neon-button">ورود</button>
+            </div>
+            
+            <div class="alternate-logins">
+                <p class="divider"><span>یا</span></p>
+                <a href="/google-login" class="neon-button google-button">
+                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg" alt="Google" width="20" height="20">
+                    ورود با حساب گوگل
+                </a>
+                <a href="/guest-login" class="neon-button guest-button">ورود به عنوان مهمان</a>
+            </div>
             
             <!-- Removed registration link -->
             <div class="form-footer">
