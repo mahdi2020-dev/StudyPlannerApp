@@ -20,7 +20,7 @@ from app.ui.calendar_module import CalendarModule
 from app.ui.settings import SettingsWidget
 from app.ui.ai_advisor_module import AIAdvisorModule
 from app.ui.widgets import NeonIconButton, UserProfileWidget
-from app.models.user import User
+from app.core.auth import User
 
 class MainWindow(QMainWindow):
     """Main application window with navigation and module containers"""
