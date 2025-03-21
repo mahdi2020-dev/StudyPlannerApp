@@ -522,6 +522,7 @@ def run_replit_web_preview():
             
             // گرفتن المنت‌های مورد نیاز با بررسی وجود آنها
             var loginForm = document.getElementById('login-form');
+            var guestButton = document.getElementById('guest-login-btn');
             
             // بررسی وجود المنت‌ها و درج event listener ها
             if (loginForm) {
@@ -544,6 +545,18 @@ def run_replit_web_preview():
                 });
             } else {
                 console.error("فرم لاگین در صفحه پیدا نشد!");
+            }
+            
+            // اضافه کردن گوش‌کننده رویداد برای دکمه ورود به عنوان مهمان
+            if (guestButton) {
+                guestButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log("کلیک روی دکمه مهمان");
+                    // هدایت به آدرس ورود به عنوان مهمان
+                    window.location.href = '/guest-login';
+                });
+            } else {
+                console.error("دکمه ورود مهمان در صفحه پیدا نشد!");
             }
         };
         
@@ -1158,26 +1171,47 @@ def run_replit_web_preview():
                 self.send_redirect('/login?resend_error=error')
                 
         def handle_guest_login(self):
-            """Handle guest login request using Supabase guest account"""
+            """Handle guest login request using local guest account"""
             try:
-                # Use the auth service to create a guest session
-                success, session_id, guest_user = auth_service.create_guest_session()
+                # اولویت: استفاده از AuthService اگر قابل دسترس باشد
+                if 'auth_service' in globals() and auth_service is not None:
+                    # تلاش برای استفاده از سرویس احراز هویت برای ساخت جلسه مهمان
+                    try:
+                        success, session_id, guest_user = auth_service.create_guest_session()
+                        
+                        if success and guest_user:
+                            # تنظیم جلسه برای کاربر مهمان
+                            current_user["user_id"] = guest_user.user_id
+                            current_user["username"] = guest_user.name
+                            current_user["is_guest"] = True
+                            current_user["email"] = guest_user.email
+                            
+                            logger.info("Guest user created via auth service")
+                            self.send_redirect('/dashboard')
+                            return
+                    except Exception as inner_e:
+                        logger.error(f"Error creating guest session via auth service: {str(inner_e)}")
                 
-                if success and guest_user:
-                    # Set session for guest user
-                    current_user["user_id"] = guest_user.id
-                    current_user["username"] = guest_user.name
+                # روش جایگزین: ایجاد کاربر مهمان به صورت محلی
+                import uuid
+                guest_id = f"guest-{uuid.uuid4()}"
+                guest_name = "کاربر مهمان"
+                
+                # تنظیم اطلاعات جلسه
+                current_user["user_id"] = guest_id
+                current_user["username"] = guest_name
+                current_user["is_guest"] = True
+                current_user["email"] = f"{guest_id}@guest.persianlifemanager.app"
                     
-                    logger.info("Guest user logged in")
-                else:
-                    raise Exception("Failed to create guest session")
-                    
+                logger.info(f"Local guest user created with ID: {guest_id}")
                 self.send_redirect('/dashboard')
+                
             except Exception as e:
                 logger.error(f"Guest login error: {str(e)}")
-                # Fallback to simple guest login if service fails
+                # حالت پشتیبان نهایی
                 current_user["user_id"] = "guest-user-id"
                 current_user["username"] = "کاربر مهمان"
+                current_user["is_guest"] = True
                 self.send_redirect('/dashboard')
         
         def handle_api_chat_post(self, json_data):
