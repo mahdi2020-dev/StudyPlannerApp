@@ -29,11 +29,15 @@ class User:
             is_guest (bool, optional): Whether this is a guest user. Defaults to False.
         """
         self.id = user_id
+        self.user_id = user_id  # اضافه کردن user_id به عنوان مترادف برای id
         self.name = name
         self.email = email
         self.is_guest = is_guest
         self.created_at = time.time()
         self.last_login = time.time()
+        self.login_time = None  # زمان ورود به فرمت رشته‌ای - برای استفاده آسان‌تر
+        self.preferences = {}   # تنظیمات کاربر
+        self.metadata = {}      # داده‌های اضافی
     
     def to_dict(self) -> Dict:
         """
@@ -44,10 +48,12 @@ class User:
         """
         return {
             'id': self.id,
+            'user_id': self.user_id,
             'name': self.name,
             'email': self.email,
             'is_guest': self.is_guest,
             'created_at': self.created_at,
+            'login_time': self.login_time,
             'last_login': self.last_login
         }
     
@@ -62,14 +68,27 @@ class User:
         Returns:
             User: User object
         """
+        # اول user_id را بررسی می‌کنیم، سپس id را
+        user_id = data.get('user_id', data.get('id', ''))
+        
         user = cls(
-            user_id=data.get('id', ''),
+            user_id=user_id,
             name=data.get('name', ''),
             email=data.get('email', ''),
             is_guest=data.get('is_guest', False)
         )
+        
+        # اضافه کردن فیلدهای جدید
         user.created_at = data.get('created_at', time.time())
         user.last_login = data.get('last_login', time.time())
+        user.login_time = data.get('login_time')
+        
+        # اضافه کردن داده‌های اضافی
+        if 'preferences' in data:
+            user.preferences = data.get('preferences', {})
+        if 'metadata' in data:
+            user.metadata = data.get('metadata', {})
+            
         return user
 
 class Session:
@@ -213,6 +232,111 @@ class AuthService:
             else:
                 return False, None, f"خطا در ورود: {str(e)}"
     
+    def login_with_google(self) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        ورود با حساب گوگل
+        
+        Returns:
+            Tuple[bool, Optional[str], Optional[str]]: 
+                - وضعیت موفقیت
+                - شناسه جلسه در صورت موفقیت، None در غیر این صورت
+                - پیام خطا در صورت عدم موفقیت، None در غیر این صورت
+        """
+        # اطمینان از راه‌اندازی سرویس
+        if not hasattr(self, '_initialized') or not self._initialized:
+            try:
+                self.initialize()
+            except Exception as e:
+                logger.error(f"Failed to initialize AuthService: {str(e)}")
+                return False, None, "خطا در راه‌اندازی سرویس احراز هویت"
+                
+        # اطمینان از راه‌اندازی Supabase
+        if not hasattr(self, 'supabase'):
+            logger.error("Supabase attribute not found in AuthService")
+            return False, None, "خطا در پیکربندی Supabase"
+            
+        # تلاش برای راه‌اندازی Supabase اگر هنوز فعال نشده است
+        if not self.supabase.is_initialized():
+            try:
+                if not self.supabase.initialize():
+                    logger.error("Failed to initialize Supabase client for Google login")
+                    return False, None, "خطا در اتصال به Supabase. لطفاً اتصال اینترنت خود را بررسی کنید."
+            except Exception as e:
+                logger.error(f"Error initializing Supabase: {str(e)}")
+                return False, None, f"خطا در اتصال به Supabase: {str(e)}"
+        
+        try:
+            # برای ورود با گوگل، URL بازگشت (redirect URL) را ایجاد می‌کنیم
+            redirect_url = self.supabase.client.auth.get_url_for_provider(
+                "google",
+                options={
+                    "redirect_to": "http://localhost:5000/auth/callback"
+                }
+            )
+            
+            # URL بازگشت را برمی‌گردانیم تا کاربر به صفحه احراز هویت گوگل هدایت شود
+            logger.info(f"Generated Google login URL: {redirect_url}")
+            return True, redirect_url, None
+            
+        except Exception as e:
+            logger.error(f"Google login error: {str(e)}")
+            return False, None, f"خطا در ورود با گوگل: {str(e)}"
+    
+    def process_google_auth_callback(self, code: str) -> Tuple[bool, Optional[str], Optional[User], Optional[str]]:
+        """
+        پردازش بازگشت از احراز هویت گوگل
+        
+        Args:
+            code (str): کد دریافتی از گوگل
+            
+        Returns:
+            Tuple[bool, Optional[str], Optional[User], Optional[str]]:
+                - وضعیت موفقیت
+                - شناسه جلسه در صورت موفقیت، None در غیر این صورت
+                - کاربر در صورت موفقیت، None در غیر این صورت
+                - پیام خطا در صورت عدم موفقیت، None در غیر این صورت
+        """
+        if not self.supabase.is_initialized():
+            if not self.supabase.initialize():
+                return False, None, None, "خطا در اتصال به Supabase"
+        
+        try:
+            # دریافت توکن با استفاده از کد
+            session = self.supabase.client.auth.exchange_code_for_session(code)
+            
+            # دریافت اطلاعات کاربر
+            user = session.user
+            
+            if not user:
+                return False, None, None, "اطلاعات کاربر دریافت نشد"
+            
+            # ایجاد جلسه جدید
+            session_id = str(uuid.uuid4())
+            
+            # اطمینان از راه‌اندازی جلسات فعال
+            if not hasattr(self, 'active_sessions'):
+                self.active_sessions = {}
+                
+            self.active_sessions[session_id] = Session(
+                session_id=session_id,
+                user_id=user.id
+            )
+            
+            # ایجاد شیء کاربر
+            new_user = User(
+                user_id=user.id,
+                name=user.user_metadata.get('full_name', user.email),
+                email=user.email,
+                is_guest=False
+            )
+            
+            logger.info(f"User {user.email} logged in via Google with session {session_id}")
+            return True, session_id, new_user, None
+            
+        except Exception as e:
+            logger.error(f"Error processing Google auth callback: {str(e)}")
+            return False, None, None, f"خطا در پردازش احراز هویت گوگل: {str(e)}"
+            
     def user_exists(self, email: str) -> bool:
         """
         Check if a user exists by email

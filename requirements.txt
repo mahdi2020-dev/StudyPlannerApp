@@ -77,3 +77,5 @@ supabase
 supabase
 supabase
 supabase
+flask-login
+oauthlib

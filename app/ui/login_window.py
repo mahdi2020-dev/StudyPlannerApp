@@ -213,25 +213,16 @@ class LoginWindow(QWidget):
     @pyqtSlot()
     def handle_guest_login(self):
         """Handle guest login button click"""
+        # اول با روش ساده و مستقیم ورود مهمان را انجام می‌دهیم (مناسب برای EXE)
+        # این روش جایگزین به طور خاص طراحی شده تا در محیط‌های بدون دسترسی به Supabase کار کند
         try:
-            # Use auth service to create a guest session
-            success, session_id, guest_user = self.auth_service.create_guest_session()
-            
-            if success and guest_user:
-                logger.info("Guest user logged in successfully")
-                self.open_main_window(guest_user)
-            else:
-                raise Exception("Failed to create guest session")
-                
-        except Exception as e:
-            logger.error(f"Guest login error: {str(e)}")
-            
-            # Fallback to simple guest login
             from app.core.auth import User
-            import time
             import uuid
+            import datetime
             
-            # Create a simple guest user
+            logger.info("Using direct guest login method (for Windows EXE)")
+            
+            # ایجاد شناسه یکتا و داده‌های کاربر مهمان
             guest_id = f"guest-{uuid.uuid4()}"
             guest_user = User(
                 user_id=guest_id,
@@ -240,8 +231,47 @@ class LoginWindow(QWidget):
                 is_guest=True
             )
             
-            logger.info("Fallback guest user created")
+            # ذخیره زمان ورود (اختیاری)
+            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            guest_user.login_time = current_time
+            
+            logger.info(f"Direct guest login successful with ID: {guest_id}")
             self.open_main_window(guest_user)
+            return
+            
+        except Exception as direct_error:
+            # اگر روش اول با خطا مواجه شد، خطا را ثبت می‌کنیم
+            logger.error(f"Direct guest login failed: {str(direct_error)}")
+            
+            # سپس روش دوم را امتحان می‌کنیم (استفاده از AuthService)
+            try:
+                # بررسی وجود و راه‌اندازی سرویس احراز هویت
+                if hasattr(self, 'auth_service') and self.auth_service:
+                    success, session_id, guest_user = self.auth_service.create_guest_session()
+                    
+                    if success and guest_user:
+                        logger.info("Guest user logged in via auth service")
+                        self.open_main_window(guest_user)
+                        return
+                    else:
+                        logger.error("Auth service returned unsuccessful guest login")
+                else:
+                    logger.error("Auth service not initialized for guest login")
+                    
+                # اگر به اینجا رسیدیم، هر دو روش شکست خورده‌اند
+                raise Exception("Both guest login methods failed")
+                    
+            except Exception as auth_error:
+                logger.error(f"Auth service guest login error: {str(auth_error)}")
+                
+                # نمایش پیام خطا به کاربر
+                from PyQt6.QtWidgets import QMessageBox
+                QMessageBox.warning(
+                    self, 
+                    "خطا در ورود مهمان", 
+                    "متأسفانه ورود به عنوان مهمان با مشکل مواجه شد.\n"
+                    "لطفاً مجدداً تلاش کنید یا با پشتیبانی تماس بگیرید."
+                )
     
     def open_main_window(self, user):
         """Open the main application window"""
