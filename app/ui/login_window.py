@@ -155,16 +155,29 @@ class LoginWindow(QWidget):
         self.remember_me.setObjectName("rememberMe")
         
         # Login and guest login buttons
-        buttons_layout = QHBoxLayout()
+        buttons_layout = QVBoxLayout()
         
         self.login_btn = NeonButton("ورود")
         self.login_btn.clicked.connect(self.handle_login)
+        
+        # دکمه ورود با گوگل
+        self.google_btn = NeonButton("ورود با حساب گوگل")
+        self.google_btn.setColor(QColor(0, 102, 204))  # رنگ آبی گوگل
+        self.google_btn.clicked.connect(self.handle_google_login)
+        
+        # فاصله بین دکمه‌های اصلی و مهمان
+        sep_frame = QFrame()
+        sep_frame.setFrameShape(QFrame.Shape.HLine)
+        sep_frame.setFrameShadow(QFrame.Shadow.Sunken)
+        sep_frame.setFixedHeight(20)
         
         self.guest_btn = NeonButton("ورود به عنوان مهمان")
         self.guest_btn.setColor(QColor(0, 170, 255))
         self.guest_btn.clicked.connect(self.handle_guest_login)
         
         buttons_layout.addWidget(self.login_btn)
+        buttons_layout.addWidget(self.google_btn)
+        buttons_layout.addWidget(sep_frame)
         buttons_layout.addWidget(self.guest_btn)
         
         # Add widgets to form layout
@@ -273,6 +286,159 @@ class LoginWindow(QWidget):
                     "لطفاً مجدداً تلاش کنید یا با پشتیبانی تماس بگیرید."
                 )
     
+    @pyqtSlot()
+    def handle_google_login(self):
+        """Handle Google login button click"""
+        try:
+            import webbrowser
+            import threading
+            import http.server
+            import socketserver
+            import urllib.parse
+            import time
+            
+            # اطمینان از راه‌اندازی سرویس احراز هویت
+            if not hasattr(self, 'auth_service') or not self.auth_service:
+                QMessageBox.warning(self, "خطا", "سرویس احراز هویت در دسترس نیست.")
+                return
+                
+            # نمایش پیام در حال انتظار
+            processing_msg = QMessageBox(self)
+            processing_msg.setWindowTitle("ورود با گوگل")
+            processing_msg.setText("در حال آماده‌سازی ورود با گوگل...\nلطفاً منتظر بمانید.")
+            processing_msg.setStandardButtons(QMessageBox.StandardButton.NoButton)
+            
+            # نمایش پیام در حال انتظار به صورت غیر انسدادی
+            threading.Thread(target=lambda: processing_msg.show()).start()
+            
+            # دریافت URL بازگشت از گوگل
+            success, redirect_url, error_message = self.auth_service.login_with_google()
+            
+            # بستن پیام در حال انتظار
+            processing_msg.close()
+            
+            if success and redirect_url:
+                # راه‌اندازی سرور محلی برای دریافت کد بازگشت از گوگل
+                callback_port = 5000  # پورت برای دریافت کالبک
+                
+                # تعریف کلاس برای مدیریت درخواست‌های بازگشت
+                class CallbackHandler(http.server.SimpleHTTPRequestHandler):
+                    def __init__(self, *args, **kwargs):
+                        self.auth_code = None
+                        super().__init__(*args, **kwargs)
+                    
+                    def do_GET(self):
+                        nonlocal auth_code
+                        
+                        # استخراج کد از پارامترهای URL
+                        parsed_url = urllib.parse.urlparse(self.path)
+                        query_params = urllib.parse.parse_qs(parsed_url.query)
+                        
+                        if parsed_url.path == '/auth/callback' and 'code' in query_params:
+                            auth_code = query_params['code'][0]
+                            
+                            # پاسخ به کاربر
+                            self.send_response(200)
+                            self.send_header('Content-type', 'text/html; charset=UTF-8')
+                            self.end_headers()
+                            
+                            html_content = '''
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <meta charset="UTF-8">
+                                <title>ورود موفق</title>
+                                <style>
+                                    body {
+                                        font-family: Arial, sans-serif;
+                                        background-color: #121212;
+                                        color: #ecf0f1;
+                                        direction: rtl;
+                                        text-align: center;
+                                        margin: 0;
+                                        padding: 50px;
+                                    }
+                                    .success-container {
+                                        background-color: #1e1e1e;
+                                        border-radius: 10px;
+                                        padding: 40px;
+                                        max-width: 500px;
+                                        margin: 0 auto;
+                                        border: 1px solid #2d2d2d;
+                                    }
+                                    h1, h2 {
+                                        color: #00ffaa;
+                                    }
+                                    p {
+                                        font-size: 1.1rem;
+                                        line-height: 1.6;
+                                        margin: 20px 0;
+                                    }
+                                </style>
+                            </head>
+                            <body>
+                                <div class="success-container">
+                                    <h1>ورود موفقیت‌آمیز</h1>
+                                    <p>احراز هویت با گوگل با موفقیت انجام شد.</p>
+                                    <p>می‌توانید این پنجره را ببندید و به برنامه بازگردید.</p>
+                                </div>
+                            </body>
+                            </html>
+                            '''
+                            self.wfile.write(html_content.encode('utf-8'))
+                            
+                            # توقف سرور پس از 1 ثانیه
+                            threading.Thread(target=lambda: (time.sleep(1), server.shutdown())).start()
+                            
+                # تعریف متغیر برای ذخیره کد
+                auth_code = None
+                
+                # راه‌اندازی سرور موقت
+                handler = CallbackHandler
+                server = socketserver.TCPServer(("", callback_port), handler)
+                
+                # راه‌اندازی سرور در یک ترد جداگانه
+                threading.Thread(target=server.serve_forever).start()
+                
+                # باز کردن URL گوگل در مرورگر
+                webbrowser.open(redirect_url)
+                
+                # نمایش پیام در حال انتظار
+                waiting_msg = QMessageBox(self)
+                waiting_msg.setWindowTitle("ورود با گوگل")
+                waiting_msg.setText("لطفاً در مرورگر به حساب گوگل خود وارد شوید.\nپس از احراز هویت، به برنامه بازگردید.")
+                waiting_msg.setStandardButtons(QMessageBox.StandardButton.Cancel)
+                
+                # نمایش پیام در حال انتظار و چک کردن نتیجه
+                result = waiting_msg.exec()
+                
+                # اگر کاربر کنسل کرد، سرور را متوقف کنیم
+                if result == QMessageBox.StandardButton.Cancel:
+                    server.shutdown()
+                    return
+                
+                # بررسی دریافت کد
+                if auth_code:
+                    # پردازش کد بازگشت از گوگل
+                    success, session_id, user, error_message = self.auth_service.process_google_auth_callback(auth_code)
+                    
+                    if success and session_id and user:
+                        logger.info(f"User {user.email} logged in via Google")
+                        self.open_main_window(user)
+                    else:
+                        error_msg = error_message if error_message else "خطا در پردازش احراز هویت گوگل."
+                        QMessageBox.warning(self, "خطا", error_msg)
+                else:
+                    QMessageBox.warning(self, "خطا", "کد احراز هویت از گوگل دریافت نشد.")
+                    
+            else:
+                error_msg = error_message if error_message else "خطا در اتصال به سرویس گوگل."
+                QMessageBox.warning(self, "خطا", error_msg)
+                
+        except Exception as e:
+            logger.error(f"Google login error: {str(e)}")
+            QMessageBox.critical(self, "خطای سیستم", f"خطا در ورود با گوگل: {str(e)}")
+            
     def open_main_window(self, user):
         """Open the main application window"""
         self.main_window = MainWindow(user)

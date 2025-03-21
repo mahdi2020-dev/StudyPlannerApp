@@ -155,6 +155,12 @@ def run_replit_web_preview():
                 self.send_login_page()
             elif path == '/guest-login':
                 self.handle_guest_login()
+            elif path == '/google-login':
+                self.handle_google_login()
+            elif path == '/auth/callback' and 'code' in parsed_url.query:
+                query_params = urllib.parse.parse_qs(parsed_url.query)
+                code = query_params.get('code', [''])[0]
+                self.handle_google_auth_callback(code)
             elif path == '/dashboard' and current_user["user_id"]:
                 self.send_dashboard_page()
             elif path == '/finance' and current_user["user_id"]:
@@ -1198,6 +1204,74 @@ def run_replit_web_preview():
             except Exception as e:
                 logger.error(f"Resend verification error: {str(e)}")
                 self.send_redirect('/login?resend_error=error')
+                
+        def handle_google_login(self):
+            """Handle Google login request"""
+            try:
+                # اولویت: استفاده از AuthService اگر قابل دسترس باشد
+                if 'auth_service' in globals() and auth_service is not None:
+                    # دریافت URL بازگشت از گوگل
+                    success, redirect_url, error_message = auth_service.login_with_google()
+                    
+                    if success and redirect_url:
+                        # هدایت کاربر به صفحه ورود گوگل
+                        self.send_redirect(redirect_url)
+                        return
+                    else:
+                        logger.error(f"Error in Google login: {error_message}")
+                        # در صورت خطا، به صفحه ورود با پیغام خطا بازگشت
+                        self.send_redirect('/login?error=google-auth-error')
+                        return
+                else:
+                    logger.error("Auth service not available for Google login")
+                    self.send_redirect('/login?error=service-unavailable')
+                    return
+                    
+            except Exception as e:
+                logger.error(f"Error in Google login: {str(e)}")
+                self.send_redirect('/login?error=unknown')
+                return
+                
+        def handle_google_auth_callback(self, code):
+            """Handle Google OAuth callback"""
+            try:
+                # اگر کد دریافت نشده باشد، به صفحه ورود برگرد
+                if not code:
+                    logger.error("No code received in Google callback")
+                    self.send_redirect('/login?error=no-code')
+                    return
+                
+                # اولویت: استفاده از AuthService اگر قابل دسترس باشد
+                if 'auth_service' in globals() and auth_service is not None:
+                    # پردازش کد بازگشت از گوگل
+                    success, session_id, user, error_message = auth_service.process_google_auth_callback(code)
+                    
+                    if success and session_id and user:
+                        # تنظیم جلسه کاربر
+                        current_user["user_id"] = user.user_id
+                        current_user["username"] = user.name
+                        current_user["is_guest"] = False
+                        current_user["email"] = user.email
+                        
+                        # ذخیره کوکی جلسه
+                        self.send_header('Set-Cookie', f'session={session_id}; Path=/; HttpOnly')
+                        
+                        logger.info(f"User {user.email} logged in via Google")
+                        self.send_redirect('/dashboard')
+                        return
+                    else:
+                        logger.error(f"Error processing Google callback: {error_message}")
+                        self.send_redirect('/login?error=google-callback-error')
+                        return
+                else:
+                    logger.error("Auth service not available for Google callback")
+                    self.send_redirect('/login?error=service-unavailable')
+                    return
+                    
+            except Exception as e:
+                logger.error(f"Error in Google auth callback: {str(e)}")
+                self.send_redirect('/login?error=unknown')
+                return
                 
         def handle_guest_login(self):
             """Handle guest login request using local guest account"""
