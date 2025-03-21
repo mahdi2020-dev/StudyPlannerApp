@@ -254,9 +254,10 @@ class LoginWindow(QWidget):
                 is_guest=True
             )
             
-            # ذخیره زمان ورود
+            # ذخیره زمان ورود - تبدیل شده به رشته برای جلوگیری از خطای تایپ
             current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            guest_user.login_time = current_time
+            if hasattr(guest_user, 'login_time'):
+                guest_user.login_time = current_time
             
             # بستن پیام در حال پردازش
             processing_msg.close()
@@ -311,12 +312,16 @@ class LoginWindow(QWidget):
                 is_guest=True
             )
             
-            # تنظیم داده‌های اضافی
-            google_user.login_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            google_user.metadata = {
-                "auth_provider": "google",
-                "auth_method": "direct_login"
-            }
+            # تنظیم داده‌های اضافی - با بررسی وجود ویژگی‌ها برای جلوگیری از خطا
+            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            if hasattr(google_user, 'login_time'):
+                google_user.login_time = current_time
+                
+            if hasattr(google_user, 'metadata'):
+                google_user.metadata = {
+                    "auth_provider": "google",
+                    "auth_method": "direct_login"
+                }
             
             logger.info(f"Created Google guest user with ID: {google_guest_id}")
             

@@ -39,8 +39,22 @@ def main():
             import main
             main.run_replit_web_preview()
         elif is_windows():
-            # If running on Windows, use the desktop app with GUI
+            # If running on Windows, always use the fixed desktop version
             logger.info("Detected Windows environment - running fixed desktop version")
+            try:
+                # بررسی وجود کلاس User و ویژگی username
+                # برای اطمینان از اینکه تغییرات لازم اعمال شده‌اند
+                logger.info("Checking User class for username attribute...")
+                from app.core.auth import User
+                test_user = User("test-id", "Test User", "test@example.com")
+                if hasattr(test_user, 'username'):
+                    logger.info("User class has username attribute - all good!")
+                else:
+                    logger.warning("User class does not have username attribute - update code!")
+            except Exception as e:
+                logger.warning(f"Could not verify User class: {e}")
+                
+            # اجرای نسخه fixed بدون توجه به نتیجه بررسی
             import run_desktop_fix
             run_desktop_fix.main()
         else:
