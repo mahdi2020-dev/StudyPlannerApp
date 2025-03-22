@@ -30,6 +30,31 @@ def main():
         app_dir = os.path.join(os.path.expanduser('~'), '.persian_life_manager')
         os.makedirs(app_dir, exist_ok=True)
         
+        # Create directories for user data and application data
+        user_data_dir = os.path.join(app_dir, 'user_data')
+        app_data_dir = os.path.join(app_dir, 'app_data')
+        os.makedirs(user_data_dir, exist_ok=True)
+        os.makedirs(app_data_dir, exist_ok=True)
+        
+        # Disable OpenAI API key error by setting a placeholder
+        # This prevents the error message from showing on startup
+        if not os.environ.get("OPENAI_API_KEY") and not os.environ.get("HUGGINGFACE_API_KEY"):
+            # Set empty environment variables to prevent errors
+            logger.info("Setting dummy API keys to prevent errors")
+            os.environ["OPENAI_API_KEY"] = "sk_dummy_key_for_windows"
+            os.environ["HUGGINGFACE_API_KEY"] = "hf_dummy_key_for_windows"
+            
+            # Save indicator that AI features will be disabled
+            with open(os.path.join(app_data_dir, 'ai_features_disabled'), 'w', encoding='utf-8') as f:
+                f.write("AI features are disabled due to missing API keys.")
+            
+            logger.info("AI features will be disabled for this session")
+        
+        # Set application as native
+        os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
+        os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+        os.environ["QT_SCALE_FACTOR"] = "1"
+        
         # Initialize QApplication with appropriate parameters
         app = QApplication(sys.argv)
         app.setApplicationName("Persian Life Manager")
@@ -40,6 +65,16 @@ def main():
         default_font = app.font()
         default_font.setPointSize(10)
         app.setFont(default_font)
+        
+        # Add icon for Windows
+        try:
+            from PyQt6.QtGui import QIcon
+            icon_path = "generated-icon.png"
+            if os.path.exists(icon_path):
+                app.setWindowIcon(QIcon(icon_path))
+                logger.info(f"Applied application icon from {icon_path}")
+        except Exception as icon_error:
+            logger.warning(f"Could not set application icon: {str(icon_error)}")
         
         # Set stylesheet if available
         try:

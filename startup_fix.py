@@ -41,6 +41,30 @@ def main():
         elif is_windows():
             # If running on Windows, always use the fixed desktop version
             logger.info("Detected Windows environment - running fixed desktop version")
+            
+            # تنظیم متغیرهای محیطی برای اجرای نیتیو در ویندوز
+            logger.info("Setting up environment for native Windows execution")
+            os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
+            os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+            os.environ["QT_SCALE_FACTOR"] = "1"
+            
+            # بررسی متغیرهای محیطی API برای هوش مصنوعی
+            # اگر تنظیم نشده باشند، مقادیر موقت برای جلوگیری از خطا تنظیم می‌شوند
+            if not os.environ.get("OPENAI_API_KEY") and not os.environ.get("HUGGINGFACE_API_KEY"):
+                logger.info("Setting dummy API keys to prevent errors")
+                os.environ["OPENAI_API_KEY"] = "sk_dummy_key_for_windows"
+                os.environ["HUGGINGFACE_API_KEY"] = "hf_dummy_key_for_windows"
+                
+                # ذخیره علامت غیرفعال بودن ویژگی‌های هوش مصنوعی
+                app_dir = os.path.join(os.path.expanduser('~'), '.persian_life_manager')
+                app_data_dir = os.path.join(app_dir, 'app_data')
+                os.makedirs(app_data_dir, exist_ok=True)
+                
+                with open(os.path.join(app_data_dir, 'ai_features_disabled'), 'w', encoding='utf-8') as f:
+                    f.write("AI features are disabled due to missing API keys.")
+                
+                logger.info("AI features will be disabled for this session")
+            
             try:
                 # بررسی وجود کلاس User و ویژگی username
                 # برای اطمینان از اینکه تغییرات لازم اعمال شده‌اند
@@ -53,8 +77,15 @@ def main():
                     logger.warning("User class does not have username attribute - update code!")
             except Exception as e:
                 logger.warning(f"Could not verify User class: {e}")
-                
+            
+            # Create directories for local user data storage
+            app_dir = os.path.join(os.path.expanduser('~'), '.persian_life_manager')
+            user_data_dir = os.path.join(app_dir, 'user_data')
+            os.makedirs(user_data_dir, exist_ok=True)
+            logger.info(f"Ensuring user data directory exists: {user_data_dir}")
+            
             # اجرای نسخه fixed بدون توجه به نتیجه بررسی
+            logger.info("Starting Persian Life Manager Desktop (Windows Native)")
             import run_desktop_fix
             run_desktop_fix.main()
         else:

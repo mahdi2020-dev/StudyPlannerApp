@@ -247,7 +247,7 @@ class LoginWindowFixed(QWidget):
     
     @pyqtSlot()
     def handle_guest_login(self):
-        """Handle guest login - simple direct implementation"""
+        """Handle guest login - improved version with local file storage"""
         # Show processing message
         processing_msg = QMessageBox(self)
         processing_msg.setWindowTitle("ورود به عنوان مهمان")
@@ -260,20 +260,63 @@ class LoginWindowFixed(QWidget):
         QApplication.processEvents()
         
         try:
-            # Basic unique ID based on timestamp
-            guest_id = f"guest-{int(time.time())}"
+            # First, check if we have a recent guest user saved
+            user_data_dir = os.path.join(os.path.expanduser('~'), '.persian_life_manager', 'user_data')
+            os.makedirs(user_data_dir, exist_ok=True)
             
-            # Create guest user with all required attributes
-            guest_user = SimplifiedUser(
-                id=guest_id,
-                username="کاربر مهمان",
-                name="کاربر مهمان",
-                email=f"{guest_id}@guest.persianlifemanager.local",
-                is_guest=True
-            )
+            # Look for any guest user files
+            guest_files = []
+            if os.path.exists(user_data_dir):
+                for file in os.listdir(user_data_dir):
+                    if file.startswith("user_guest-") and file.endswith(".json"):
+                        guest_files.append(os.path.join(user_data_dir, file))
             
-            # Log guest creation
-            logger.info(f"Created guest user: {guest_user}")
+            guest_user = None
+            
+            # If we found guest files, try to use the most recent one
+            if guest_files:
+                # Sort by modification time, newest first
+                guest_files.sort(key=lambda f: os.path.getmtime(f), reverse=True)
+                
+                try:
+                    # Try to load the most recent guest user
+                    with open(guest_files[0], 'r', encoding='utf-8') as f:
+                        user_data = json.load(f)
+                    
+                    guest_user = SimplifiedUser.from_dict(user_data)
+                    guest_user.last_login = time.time()
+                    guest_user.login_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    logger.info(f"Loaded existing guest user: {guest_user}")
+                except Exception as load_err:
+                    logger.warning(f"Failed to load guest user, creating new one: {str(load_err)}")
+                    guest_user = None
+            
+            # If we couldn't load an existing guest, create a new one
+            if guest_user is None:
+                # Basic unique ID based on timestamp
+                guest_id = f"guest-{int(time.time())}"
+                
+                # Create guest user with all required attributes
+                guest_user = SimplifiedUser(
+                    id=guest_id,
+                    username="کاربر مهمان",
+                    name="کاربر مهمان",
+                    email=f"{guest_id}@guest.persianlifemanager.local",
+                    is_guest=True
+                )
+                
+                logger.info(f"Created new guest user: {guest_user}")
+            
+            # Save the guest user to a file
+            try:
+                # Save to the default location
+                if guest_user.save_to_file():
+                    logger.info(f"Guest user data saved successfully")
+                else:
+                    logger.warning("Failed to save guest user data")
+            except Exception as save_err:
+                logger.error(f"Error saving guest user: {str(save_err)}")
             
             # Small delay for message visibility
             time.sleep(1)
@@ -292,7 +335,7 @@ class LoginWindowFixed(QWidget):
     
     @pyqtSlot()
     def handle_google_login(self):
-        """Simplified Google login for Windows - creates a custom user directly"""
+        """Improved Google login for Windows - creates a persistent user"""
         # Information about alternative approach
         info_msg = QMessageBox(self)
         info_msg.setWindowTitle("روش جایگزین ورود با گوگل")
@@ -316,26 +359,69 @@ class LoginWindowFixed(QWidget):
         QApplication.processEvents()
         
         try:
-            # Create a unique ID
-            google_id = f"google-{int(time.time())}"
+            # First, check if we have a recent google user saved
+            user_data_dir = os.path.join(os.path.expanduser('~'), '.persian_life_manager', 'user_data')
+            os.makedirs(user_data_dir, exist_ok=True)
             
-            # Create Google user with a special name to distinguish it
-            google_user = SimplifiedUser(
-                id=google_id,
-                username="کاربر گوگل",
-                name="کاربر گوگل",
-                email=f"{google_id}@gmail.persianlifemanager.local",
-                is_guest=False  # Not a guest, but a special Google user
-            )
+            # Look for any google user files
+            google_files = []
+            if os.path.exists(user_data_dir):
+                for file in os.listdir(user_data_dir):
+                    if file.startswith("user_google-") and file.endswith(".json"):
+                        google_files.append(os.path.join(user_data_dir, file))
             
-            # Add special metadata
-            google_user.metadata = {
-                "provider": "google",
-                "login_method": "alternative"
-            }
+            google_user = None
             
-            # Log creation
-            logger.info(f"Created alternative Google user: {google_user}")
+            # If we found google files, try to use the most recent one
+            if google_files:
+                # Sort by modification time, newest first
+                google_files.sort(key=lambda f: os.path.getmtime(f), reverse=True)
+                
+                try:
+                    # Try to load the most recent google user
+                    with open(google_files[0], 'r', encoding='utf-8') as f:
+                        user_data = json.load(f)
+                    
+                    google_user = SimplifiedUser.from_dict(user_data)
+                    google_user.last_login = time.time()
+                    google_user.login_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    logger.info(f"Loaded existing Google user: {google_user}")
+                except Exception as load_err:
+                    logger.warning(f"Failed to load Google user, creating new one: {str(load_err)}")
+                    google_user = None
+            
+            # If we couldn't load an existing google user, create a new one
+            if google_user is None:
+                # Create a unique ID
+                google_id = f"google-{int(time.time())}"
+                
+                # Create Google user with a special name to distinguish it
+                google_user = SimplifiedUser(
+                    id=google_id,
+                    username="کاربر گوگل",
+                    name="کاربر گوگل",
+                    email=f"{google_id}@gmail.persianlifemanager.local",
+                    is_guest=False  # Not a guest, but a special Google user
+                )
+                
+                # Add special metadata
+                google_user.metadata = {
+                    "provider": "google",
+                    "login_method": "alternative"
+                }
+                
+                logger.info(f"Created new Google user: {google_user}")
+            
+            # Save the google user to a file
+            try:
+                # Save to the default location
+                if google_user.save_to_file():
+                    logger.info(f"Google user data saved successfully")
+                else:
+                    logger.warning("Failed to save Google user data")
+            except Exception as save_err:
+                logger.error(f"Error saving Google user: {str(save_err)}")
             
             # Small delay for message visibility
             time.sleep(1)
