@@ -4,7 +4,9 @@ workflows:
     environment:
       flutter: stable
     scripts:
+      - echo "📦 Running flutter pub get..."
       - flutter pub get
+      - echo "✅ pub get finished. Running build..."
       - flutter build apk --release
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk
