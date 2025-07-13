@@ -4,9 +4,12 @@ workflows:
     environment:
       flutter: stable
     scripts:
+      - echo "🔍 چاپ pubspec.yaml"
+      - cat pubspec.yaml
       - echo "📦 Running flutter pub get..."
-      - flutter pub get
+      - flutter pub get -v
       - echo "✅ pub get finished. Running build..."
       - flutter build apk --release
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk
+
