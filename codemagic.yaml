@@ -4,8 +4,6 @@ workflows:
     environment:
       flutter: stable
     scripts:
-      - cd app
-      - flutter pub get
-      - flutter build apk --release
+      - cd app && flutter pub get && flutter build apk --release
     artifacts:
       - app/build/app/outputs/flutter-apk/app-release.apk
